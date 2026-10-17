@@ -236,7 +236,7 @@ pub async fn handle(pool: &PgPool, cmd: Command) -> Result<FlowResult, Error> {{
 }}
 
 pub fn design_notes() -> &'static str {{
-    "This file is auto-generated in SAFE MODE. Register route manually via outputs/scaffold/<flow_id>/REGISTER.md"
+    "This file is auto-generated in SAFE MODE. See the REGISTER.md emitted by scaffold_flow before wiring a route."
 }}
 '''
 

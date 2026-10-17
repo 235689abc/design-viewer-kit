@@ -8,11 +8,18 @@ export type ViewerPolicy = {
   auditSchemas: Set<string>;
 };
 
+function stringOrFallback(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
 export function getViewerPolicy(data: ProjectData | null): ViewerPolicy {
   const configured = data?.meta.policy;
-  const eventTable = configured?.event_table?.trim() || 'events';
-  const outboxTable = configured?.outbox_table?.trim() || 'outbox';
-  const processedEventsTable = configured?.processed_events_table?.trim() || 'processed_events';
+  const eventTable = stringOrFallback(configured?.event_table, 'events');
+  const outboxTable = stringOrFallback(configured?.outbox_table, 'outbox');
+  const processedEventsTable = stringOrFallback(
+    configured?.processed_events_table,
+    'processed_events',
+  );
   const configuredMultiWriterTables = (configured?.allow_multi_writer_tables ?? [])
     .filter((table): table is string => typeof table === 'string')
     .map((table) => table.trim())
