@@ -1,0 +1,113 @@
+{
+  "meta": {
+    "schema_version": "design-viewer.flow-manifest/v1",
+    "project": "design-viewer-demo",
+    "policy": {
+      "event_table": "public.events",
+      "outbox_table": "public.outbox"
+    }
+  },
+  "services": [
+    {
+      "id": "web",
+      "name_en": "Web Client",
+      "name_zh": "Web 客户端"
+    },
+    {
+      "id": "orders-api",
+      "name_en": "Orders API",
+      "name_zh": "订单 API"
+    },
+    {
+      "id": "delivery-worker",
+      "name_en": "Delivery Worker",
+      "name_zh": "投递 Worker"
+    }
+  ],
+  "tables": [
+    {
+      "name": "public.orders",
+      "state": "existing",
+      "owner_service": "orders-api",
+      "introduced_in": "db/migrations/001_orders.sql",
+      "label_en": "Orders",
+      "label_zh": "订单"
+    },
+    {
+      "name": "public.events",
+      "state": "existing",
+      "owner_service": "orders-api",
+      "introduced_in": "db/migrations/000_events.sql",
+      "label_en": "Events",
+      "label_zh": "事件"
+    },
+    {
+      "name": "public.outbox",
+      "state": "existing",
+      "owner_service": "orders-api",
+      "introduced_in": "db/migrations/000_outbox.sql",
+      "label_en": "Outbox",
+      "label_zh": "投递箱"
+    },
+    {
+      "name": "public.order_read_model",
+      "state": "planned",
+      "owner_service": "delivery-worker",
+      "introduced_in": "TBD",
+      "label_en": "Order Read Model",
+      "label_zh": "订单读模型"
+    }
+  ],
+  "flows": [
+    {
+      "id": "FLOW-ORDER-CREATE-001",
+      "name_en": "Create Order",
+      "name_zh": "创建订单",
+      "owner_service": "orders-api",
+      "actors": ["web"],
+      "reads": [],
+      "writes": [
+        {"table": "public.orders", "op": "C"},
+        {"table": "public.events", "op": "C"},
+        {"table": "public.outbox", "op": "C"}
+      ],
+      "events_appended": ["OrderCreated"],
+      "outbox": {"topic": "order-events", "partition_key": "order_id"},
+      "finality": "local-commit",
+      "idempotency_key": "client_request_id",
+      "doc_path": "docs/flows/order-create",
+      "introduced_in": "db/migrations/001_orders.sql"
+    },
+    {
+      "id": "FLOW-ORDER-PUBLISH-001",
+      "name_en": "Publish Order Event",
+      "name_zh": "投递订单事件",
+      "owner_service": "delivery-worker",
+      "actors": ["delivery-worker"],
+      "reads": ["public.outbox"],
+      "writes": [{"table": "public.outbox", "op": "U"}],
+      "events_appended": [],
+      "outbox": {"topic": "order-events"},
+      "finality": "delivery-ack",
+      "idempotency_key": "outbox_event_id",
+      "doc_path": "docs/flows/order-publish",
+      "introduced_in": "workers/order_publisher.py"
+    },
+    {
+      "id": "FLOW-ORDER-PROJECTION-001",
+      "name_en": "Project Order Read Model",
+      "name_zh": "投影订单读模型",
+      "owner_service": "delivery-worker",
+      "actors": ["delivery-worker"],
+      "reads": ["public.events"],
+      "writes": [
+        {"table": "public.order_read_model", "op": "U"}
+      ],
+      "events_appended": [],
+      "finality": "projection-commit",
+      "idempotency_key": "event_id",
+      "doc_path": "docs/flows/order-projection",
+      "introduced_in": "workers/order_projector.py"
+    }
+  ]
+}

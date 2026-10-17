@@ -1,0 +1,200 @@
+{
+  "meta": {
+    "project": "design-viewer-demo",
+    "generated_at": "2026-10-17T06:58:11Z",
+    "source_flows_json": "docs/diagrams/flows.json",
+    "source_generated_dir": "docs/diagrams/generated",
+    "schema_version": "design-viewer.flow-manifest/v1",
+    "source_revision": "",
+    "policy": {
+      "event_table": "public.events",
+      "outbox_table": "public.outbox"
+    }
+  },
+  "services": [
+    {
+      "id": "web",
+      "name_en": "Web Client",
+      "name_zh": "Web 客户端"
+    },
+    {
+      "id": "orders-api",
+      "name_en": "Orders API",
+      "name_zh": "订单 API"
+    },
+    {
+      "id": "delivery-worker",
+      "name_en": "Delivery Worker",
+      "name_zh": "投递 Worker"
+    }
+  ],
+  "tables": [
+    {
+      "name": "public.orders",
+      "state": "existing",
+      "owner_service": "orders-api",
+      "introduced_in": "db/migrations/001_orders.sql",
+      "label_en": "Orders",
+      "label_zh": "订单"
+    },
+    {
+      "name": "public.events",
+      "state": "existing",
+      "owner_service": "orders-api",
+      "introduced_in": "db/migrations/000_events.sql",
+      "label_en": "Events",
+      "label_zh": "事件"
+    },
+    {
+      "name": "public.outbox",
+      "state": "existing",
+      "owner_service": "orders-api",
+      "introduced_in": "db/migrations/000_outbox.sql",
+      "label_en": "Outbox",
+      "label_zh": "投递箱"
+    },
+    {
+      "name": "public.order_read_model",
+      "state": "planned",
+      "owner_service": "delivery-worker",
+      "introduced_in": "TBD",
+      "label_en": "Order Read Model",
+      "label_zh": "订单读模型"
+    }
+  ],
+  "flows": [
+    {
+      "id": "FLOW-ORDER-CREATE-001",
+      "name_en": "Create Order",
+      "name_zh": "创建订单",
+      "owner_service": "orders-api",
+      "actors": [
+        "web"
+      ],
+      "reads": [],
+      "writes": [
+        {
+          "table": "public.orders",
+          "op": "C"
+        },
+        {
+          "table": "public.events",
+          "op": "C"
+        },
+        {
+          "table": "public.outbox",
+          "op": "C"
+        }
+      ],
+      "events_appended": [
+        "OrderCreated"
+      ],
+      "outbox": {
+        "topic": "order-events",
+        "partition_key": "order_id"
+      },
+      "finality": "local-commit",
+      "idempotency_key": "client_request_id",
+      "doc_path": "docs/flows/order-create",
+      "introduced_in": "db/migrations/001_orders.sql",
+      "deprecated": false,
+      "replaced_by": "",
+      "aliases": []
+    },
+    {
+      "id": "FLOW-ORDER-PUBLISH-001",
+      "name_en": "Publish Order Event",
+      "name_zh": "投递订单事件",
+      "owner_service": "delivery-worker",
+      "actors": [
+        "delivery-worker"
+      ],
+      "reads": [
+        "public.outbox"
+      ],
+      "writes": [
+        {
+          "table": "public.outbox",
+          "op": "U"
+        }
+      ],
+      "events_appended": [],
+      "outbox": {
+        "topic": "order-events"
+      },
+      "finality": "delivery-ack",
+      "idempotency_key": "outbox_event_id",
+      "doc_path": "docs/flows/order-publish",
+      "introduced_in": "workers/order_publisher.py",
+      "deprecated": false,
+      "replaced_by": "",
+      "aliases": []
+    },
+    {
+      "id": "FLOW-ORDER-PROJECTION-001",
+      "name_en": "Project Order Read Model",
+      "name_zh": "投影订单读模型",
+      "owner_service": "delivery-worker",
+      "actors": [
+        "delivery-worker"
+      ],
+      "reads": [
+        "public.events"
+      ],
+      "writes": [
+        {
+          "table": "public.order_read_model",
+          "op": "U"
+        }
+      ],
+      "events_appended": [],
+      "finality": "projection-commit",
+      "idempotency_key": "event_id",
+      "doc_path": "docs/flows/order-projection",
+      "introduced_in": "workers/order_projector.py",
+      "deprecated": false,
+      "replaced_by": "",
+      "aliases": []
+    }
+  ],
+  "crudEdges": [
+    {
+      "flow_id": "FLOW-ORDER-CREATE-001",
+      "table": "public.orders",
+      "ops": "C"
+    },
+    {
+      "flow_id": "FLOW-ORDER-CREATE-001",
+      "table": "public.events",
+      "ops": "C"
+    },
+    {
+      "flow_id": "FLOW-ORDER-CREATE-001",
+      "table": "public.outbox",
+      "ops": "C"
+    },
+    {
+      "flow_id": "FLOW-ORDER-PUBLISH-001",
+      "table": "public.outbox",
+      "ops": "RU"
+    },
+    {
+      "flow_id": "FLOW-ORDER-PROJECTION-001",
+      "table": "public.events",
+      "ops": "R"
+    },
+    {
+      "flow_id": "FLOW-ORDER-PROJECTION-001",
+      "table": "public.order_read_model",
+      "ops": "U"
+    }
+  ],
+  "diagrams": {
+    "l0_mermaid": "graph TB\n\n  %% Services / 服务\n  subgraph S[\"Services / 服务\"]\n    N_web[\"web<br/>Web Client / Web 客户端\"]\n    N_orders_api[\"orders-api<br/>Orders API / 订单 API\"]\n    N_delivery_worker[\"delivery-worker<br/>Delivery Worker / 投递 Worker\"]\n  end\n\n  %% Schemas & Tables / 模式与数据表\n  subgraph N_SCHEMA_public[\"public / 公共\"]\n    N_public_events[\"public.events<br/>Events / 事件\"]\n    N_public_order_read_model[\"public.order_read_model<br/>Order Read Model / 订单读模型\"]\n    N_public_orders[\"public.orders<br/>Orders / 订单\"]\n    N_public_outbox[\"public.outbox<br/>Outbox / 投递箱\"]\n  end\n\n  %% Ownership edges (service writes -> schema) / 所有权边（服务写入 -> schema）\n  N_delivery_worker --> N_SCHEMA_public\n  N_orders_api --> N_SCHEMA_public\n",
+    "flow_mermaid": {
+      "FLOW-ORDER-CREATE-001": "sequenceDiagram\n  autonumber\n  participant A as \"Actor<br/>触发方\"\n  participant S as \"orders-api<br/>Orders API / 订单 API\"\n  participant DB as \"Database<br/>数据库\"\n  participant E as \"public.events<br/>Events / 事件\"\n  participant O as \"public.outbox<br/>Outbox / 投递表\"\n  participant W as \"outbox-worker<br/>Publisher / 投递器\"\n  participant B as \"EventBus<br/>事件总线\"\n  participant C as \"Consumer<br/>消费者\"\n\n  A->>S: trigger flow / 触发流程\n  S->>DB: BEGIN / 开启事务\n  S->>DB: READ n/a / 读取\n  S->>DB: WRITE public.orders:C, public.events:C, public.outbox:C / 写入\n  S->>E: APPEND public.events OrderCreated / 追加事件\n  S->>O: INSERT public.outbox(PENDING) / 写入待投递\n  S->>DB: COMMIT / 提交事务\n\n  W->>O: SELECT PENDING (SKIP LOCKED) / 选择待投递\n  W->>B: publish(message) / 发布消息\n  W->>O: UPDATE status=SENT/FAILED / 更新状态\n\n  B-->>C: deliver message / 投递消息\n  C->>DB: INSERT processed_events (ON CONFLICT DO NOTHING) / 幂等去重\n  C->>DB: UPSERT read models / side effects / 更新读模型与副作用\n",
+      "FLOW-ORDER-PUBLISH-001": "sequenceDiagram\n  autonumber\n  participant A as \"Actor<br/>触发方\"\n  participant S as \"delivery-worker<br/>Delivery Worker / 投递 Worker\"\n  participant DB as \"Database<br/>数据库\"\n  participant O as \"public.outbox<br/>Outbox / 投递表\"\n  participant W as \"outbox-worker<br/>Publisher / 投递器\"\n  participant B as \"EventBus<br/>事件总线\"\n  participant C as \"Consumer<br/>消费者\"\n\n  A->>S: trigger flow / 触发流程\n  S->>DB: BEGIN / 开启事务\n  S->>DB: READ public.outbox / 读取\n  S->>DB: WRITE public.outbox:U / 写入\n  S->>O: INSERT public.outbox(PENDING) / 写入待投递\n  S->>DB: COMMIT / 提交事务\n\n  W->>O: SELECT PENDING (SKIP LOCKED) / 选择待投递\n  W->>B: publish(message) / 发布消息\n  W->>O: UPDATE status=SENT/FAILED / 更新状态\n\n  B-->>C: deliver message / 投递消息\n  C->>DB: INSERT processed_events (ON CONFLICT DO NOTHING) / 幂等去重\n  C->>DB: UPSERT read models / side effects / 更新读模型与副作用\n",
+      "FLOW-ORDER-PROJECTION-001": "sequenceDiagram\n  autonumber\n  participant A as \"Actor<br/>触发方\"\n  participant S as \"delivery-worker<br/>Delivery Worker / 投递 Worker\"\n  participant DB as \"Database<br/>数据库\"\n\n  A->>S: trigger flow / 触发流程\n  S->>DB: BEGIN / 开启事务\n  S->>DB: READ public.events / 读取\n  S->>DB: WRITE public.order_read_model:U / 写入\n  S->>DB: COMMIT / 提交事务\n"
+    }
+  }
+}

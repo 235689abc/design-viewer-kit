@@ -1,0 +1,26 @@
+# JavaScript dependencies and build output
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+apps/web/vite.config.js
+apps/web/vite.config.d.ts
+
+# Local environment and generated scaffold output
+.env
+.env.*
+!.env.example
+outputs/
+
+# Runtime history can contain project-specific data. Keep the manifest only.
+apps/web/public/data/history/*.json
+!apps/web/public/data/history/manifest.json
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/

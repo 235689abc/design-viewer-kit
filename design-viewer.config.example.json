@@ -1,0 +1,12 @@
+{
+  "project": "my-project",
+  "spec": "./docs/diagrams/flows.json",
+  "generatedDir": "./docs/diagrams/generated",
+  "indexOut": "./apps/web/public/data/index.json",
+  "historyDir": "./apps/web/public/data/history",
+  "historyManifest": "./apps/web/public/data/history/manifest.json",
+  "sourceFlowsJson": "docs/diagrams/flows.json",
+  "sourceGeneratedDir": "docs/diagrams/generated",
+  "historyKeepLimit": 20,
+  "skipHistory": true
+}
