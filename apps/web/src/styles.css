@@ -908,6 +908,137 @@ body,
   background: rgba(239, 68, 68, 0.12);
 }
 
+.database-page {
+  display: grid;
+  gap: 14px;
+}
+
+.database-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.database-metrics article {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 12px 14px;
+}
+
+.database-metrics strong {
+  font-size: 24px;
+}
+
+.database-metrics span {
+  color: #475569;
+  font-size: 12px;
+}
+
+.database-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: flex-end;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.database-toolbar label {
+  display: grid;
+  gap: 5px;
+  color: #334155;
+  font-size: 12px;
+}
+
+.database-toolbar input,
+.database-toolbar select {
+  min-width: 220px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.database-table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+  gap: 12px;
+}
+
+.database-table-card {
+  min-width: 0;
+}
+
+.database-table-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.database-table-card-heading h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.database-table-card-heading a {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+.database-column-wrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+}
+
+.database-column-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  font-size: 12px;
+}
+
+.database-column-table th,
+.database-column-table td {
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.database-column-table th:last-child,
+.database-column-table td:last-child {
+  border-right: 0;
+}
+
+.database-constraint-list {
+  margin-top: 12px;
+}
+
+.database-constraint-list h3,
+.database-relations-card h3 {
+  margin: 10px 0 6px;
+  font-size: 13px;
+}
+
+.database-constraint-list ul {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+
 code {
   background: #e2e8f0;
   border-radius: 4px;
@@ -921,6 +1052,14 @@ code {
 
   .l0-schema-sidebar {
     position: static;
+  }
+
+  .database-metrics {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .database-table-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -955,9 +1094,12 @@ body * {
   text-shadow: none !important;
 }
 
-#root,
-#root * {
+#root {
   background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+#root * {
   background-image: none !important;
   border-color: #d0d0d0 !important;
   box-shadow: none !important;
@@ -974,4 +1116,21 @@ textarea {
 
 a {
   color: #000000 !important;
+}
+
+/* Keep CRUD operation cells legible under consumer theme overrides. */
+#root .crud-grid-theme .crud-cell-has-r {
+  background-color: #dbeafe !important;
+}
+
+#root .crud-grid-theme .crud-cell-has-c {
+  background-color: #dcfce7 !important;
+}
+
+#root .crud-grid-theme .crud-cell-has-u {
+  background-color: #fef3c7 !important;
+}
+
+#root .crud-grid-theme .crud-cell-has-d {
+  background-color: #fee2e2 !important;
 }

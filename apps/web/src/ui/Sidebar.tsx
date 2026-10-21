@@ -5,6 +5,7 @@ const navItems = [
   { to: '/crud', label: 'CRUD Matrix / CRUD 矩阵' },
   { to: '/flows', label: 'Flows / 流程' },
   { to: '/tables', label: 'Tables / 数据表' },
+  { to: '/database', label: 'Database / 数据库' },
   { to: '/l0', label: 'L0 Map / 系统地图' },
   { to: '/governance', label: 'Governance / 治理' },
   { to: '/diff', label: 'Diff / 变更' },

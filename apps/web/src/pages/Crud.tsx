@@ -35,7 +35,7 @@ const DENSITY_CONFIG: Record<Density, { rowHeight: number; headerHeight: number 
   normal: { rowHeight: 44, headerHeight: 40 },
   comfortable: { rowHeight: 54, headerHeight: 48 },
 };
-const CRUD_WIDTH_STORAGE_KEY = 'design_viewer.crud.column_widths.v1';
+const CRUD_WIDTH_STORAGE_KEY = 'design_viewer.crud.column_widths.v2';
 const NON_USER_RESIZE_SOURCES = new Set([
   'api',
   'autosizeColumn',
@@ -44,6 +44,19 @@ const NON_USER_RESIZE_SOURCES = new Set([
   'alignedGridChanged',
   'flex',
 ]);
+
+function normalizedColumnWidth(colId: string, width: number): number {
+  if (colId === 'flowId') {
+    return Math.min(320, Math.max(160, width));
+  }
+  if (colId === 'name') {
+    return Math.min(440, Math.max(220, width));
+  }
+  if (colId === 'owner') {
+    return Math.min(340, Math.max(180, width));
+  }
+  return Math.min(240, Math.max(96, width));
+}
 
 function renderFlowCell(
   flowId: string,
@@ -120,7 +133,14 @@ export function CrudPage() {
         return {};
       }
       const parsed = JSON.parse(raw) as Record<string, number>;
-      return parsed && typeof parsed === 'object' ? parsed : {};
+      if (!parsed || typeof parsed !== 'object') {
+        return {};
+      }
+      return Object.fromEntries(
+        Object.entries(parsed)
+          .filter(([, width]) => Number.isFinite(width) && width > 0)
+          .map(([colId, width]) => [colId, normalizedColumnWidth(colId, width)]),
+      );
     } catch {
       return {};
     }
@@ -144,7 +164,7 @@ export function CrudPage() {
     const widthMap = widthByColIdRef.current;
     const states = Object.entries(widthMap)
       .filter(([, width]) => Number.isFinite(width) && width > 0)
-      .map(([colId, width]) => ({ colId, width }));
+      .map(([colId, width]) => ({ colId, width: normalizedColumnWidth(colId, width) }));
     if (states.length === 0) {
       return;
     }
@@ -273,8 +293,8 @@ export function CrudPage() {
         field: 'flowId',
         headerName: 'Flow ID',
         pinned: 'left',
-        width: 300,
-        minWidth: 220,
+        width: 210,
+        minWidth: 160,
         sortable: true,
         resizable: true,
         wrapText: false,
@@ -289,8 +309,8 @@ export function CrudPage() {
         field: 'name',
         headerName: 'Name (EN / 中文)',
         pinned: 'left',
-        width: 640,
-        minWidth: 460,
+        width: 340,
+        minWidth: 220,
         sortable: true,
         resizable: true,
         wrapText: false,
@@ -303,8 +323,8 @@ export function CrudPage() {
         field: 'owner',
         headerName: 'Owner (EN / 中文)',
         pinned: 'left',
-        width: 460,
-        minWidth: 320,
+        width: 260,
+        minWidth: 180,
         sortable: true,
         resizable: true,
         wrapText: false,
@@ -321,8 +341,8 @@ export function CrudPage() {
       visibleTables.map((table) => ({
         colId: table.name,
         headerName: table.name,
-        minWidth: 120,
-        width: 130,
+        minWidth: 96,
+        width: 118,
         sortable: false,
         valueGetter: (params: ValueGetterParams<CrudRow>) =>
           edgesByFlow.get(params.data?.flowId ?? '')?.get(table.name) ?? '-',
@@ -443,10 +463,16 @@ export function CrudPage() {
 
       const column = event.column;
       if (column) {
-        widthByColIdRef.current[column.getColId()] = column.getActualWidth();
+        widthByColIdRef.current[column.getColId()] = normalizedColumnWidth(
+          column.getColId(),
+          column.getActualWidth(),
+        );
       } else if (event.columns && event.columns.length > 0) {
         for (const col of event.columns) {
-          widthByColIdRef.current[col.getColId()] = col.getActualWidth();
+          widthByColIdRef.current[col.getColId()] = normalizedColumnWidth(
+            col.getColId(),
+            col.getActualWidth(),
+          );
         }
       } else {
         return;
@@ -568,6 +594,7 @@ export function CrudPage() {
             }
           >
             <AgGridReact<CrudRow>
+              theme="legacy"
               rowData={rowData}
               columnDefs={columnDefs}
               defaultColDef={{ sortable: true, resizable: true }}

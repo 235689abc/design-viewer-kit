@@ -11,6 +11,7 @@ import { SchemaDetailPage } from '../pages/SchemaDetail';
 import { SettingsPage } from '../pages/Settings';
 import { DiffPage } from '../pages/Diff';
 import { GovernancePage } from '../pages/Governance';
+import { DatabasePage } from '../pages/Database';
 
 export function AppRoutes() {
   return useRoutes([
@@ -24,6 +25,7 @@ export function AppRoutes() {
         { path: 'flows/:id', element: <FlowDetailPage /> },
         { path: 'tables', element: <TablesPage /> },
         { path: 'tables/:name', element: <TableDetailPage /> },
+        { path: 'database', element: <DatabasePage /> },
         { path: 'l0', element: <L0Page /> },
         { path: 'governance', element: <GovernancePage /> },
         { path: 'schemas/:name', element: <SchemaDetailPage /> },

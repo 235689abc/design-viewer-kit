@@ -19,6 +19,42 @@ export type ServiceRecord = {
   source_ref?: string;
 };
 
+export type DatastoreRecord = {
+  id: string;
+  name: string;
+  engine: string;
+  schema?: string;
+  state?: string;
+  source_ref?: string;
+  notes?: string;
+};
+
+export type TableColumnRecord = {
+  name: string;
+  type: string;
+  nullable?: boolean;
+  default?: string;
+  primary_key?: boolean;
+  unique?: boolean;
+  notes?: string;
+};
+
+export type TableForeignKeyRecord = {
+  columns: string[];
+  references_table: string;
+  references_columns: string[];
+  name?: string;
+  on_delete?: string;
+  on_update?: string;
+};
+
+export type TableIndexRecord = {
+  name: string;
+  columns: string[];
+  unique?: boolean;
+  where?: string;
+};
+
 export type TableRecord = {
   name: string;
   state: string;
@@ -30,7 +66,11 @@ export type TableRecord = {
   label_zh?: string;
   notes?: string;
   source_ref?: string;
-  columns?: Array<Record<string, unknown>>;
+  datastore_id?: string;
+  columns?: TableColumnRecord[];
+  primary_key?: string[];
+  foreign_keys?: TableForeignKeyRecord[];
+  indexes?: TableIndexRecord[];
 };
 
 export type FlowWriteRecord = {
@@ -90,12 +130,14 @@ export type ProjectData = {
     };
   };
   services: ServiceRecord[];
+  datastores?: DatastoreRecord[];
   tables: TableRecord[];
   flows: FlowRecord[];
   crudEdges: CrudEdgeRecord[];
   diagrams: {
     l0_mermaid: string;
     flow_mermaid: Record<string, string>;
+    database_mermaid?: string;
   };
 };
 

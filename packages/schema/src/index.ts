@@ -8,6 +8,42 @@ export type Service = {
   source_ref?: string;
 };
 
+export type Datastore = {
+  id: string;
+  name: string;
+  engine: string;
+  schema?: string;
+  state?: string;
+  source_ref?: string;
+  notes?: string;
+};
+
+export type TableColumn = {
+  name: string;
+  type: string;
+  nullable?: boolean;
+  default?: string;
+  primary_key?: boolean;
+  unique?: boolean;
+  notes?: string;
+};
+
+export type TableForeignKey = {
+  columns: string[];
+  references_table: string;
+  references_columns: string[];
+  name?: string;
+  on_delete?: string;
+  on_update?: string;
+};
+
+export type TableIndex = {
+  name: string;
+  columns: string[];
+  unique?: boolean;
+  where?: string;
+};
+
 export type Table = {
   name: string;
   state: string;
@@ -19,7 +55,11 @@ export type Table = {
   label_zh?: string;
   notes?: string;
   source_ref?: string;
-  columns?: Array<Record<string, unknown>>;
+  datastore_id?: string;
+  columns?: TableColumn[];
+  primary_key?: string[];
+  foreign_keys?: TableForeignKey[];
+  indexes?: TableIndex[];
 };
 
 export type FlowWrite = {
@@ -79,11 +119,13 @@ export type DesignIndex = {
     };
   };
   services: Service[];
+  datastores?: Datastore[];
   tables: Table[];
   flows: Flow[];
   crudEdges: CrudEdge[];
   diagrams: {
     l0_mermaid: string;
     flow_mermaid: Record<string, string>;
+    database_mermaid?: string;
   };
 };

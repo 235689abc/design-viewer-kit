@@ -1,7 +1,7 @@
 {
   "meta": {
     "project": "design-viewer-demo",
-    "generated_at": "2026-10-17T06:58:11Z",
+    "generated_at": "2026-10-21T14:55:49Z",
     "source_flows_json": "docs/diagrams/flows.json",
     "source_generated_dir": "docs/diagrams/generated",
     "schema_version": "design-viewer.flow-manifest/v1",
@@ -28,38 +28,240 @@
       "name_zh": "投递 Worker"
     }
   ],
+  "datastores": [
+    {
+      "id": "orders-postgres",
+      "name": "Orders PostgreSQL",
+      "engine": "PostgreSQL",
+      "schema": "public",
+      "state": "existing",
+      "source_ref": "db/migrations"
+    }
+  ],
   "tables": [
     {
       "name": "public.orders",
+      "kind": "postgres-table",
       "state": "existing",
       "owner_service": "orders-api",
       "introduced_in": "db/migrations/001_orders.sql",
       "label_en": "Orders",
-      "label_zh": "订单"
+      "label_zh": "订单",
+      "datastore_id": "orders-postgres",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "UUID",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "client_request_id",
+          "type": "TEXT",
+          "nullable": false,
+          "unique": true
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "order_id"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "orders_client_request_key",
+          "columns": [
+            "client_request_id"
+          ],
+          "unique": true
+        }
+      ]
     },
     {
       "name": "public.events",
+      "kind": "postgres-table",
       "state": "existing",
       "owner_service": "orders-api",
       "introduced_in": "db/migrations/000_events.sql",
       "label_en": "Events",
-      "label_zh": "事件"
+      "label_zh": "事件",
+      "datastore_id": "orders-postgres",
+      "columns": [
+        {
+          "name": "event_id",
+          "type": "UUID",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "order_id",
+          "type": "UUID",
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "payload_json",
+          "type": "JSONB",
+          "nullable": false
+        },
+        {
+          "name": "occurred_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "event_id"
+      ],
+      "foreign_keys": [
+        {
+          "name": "events_order_fk",
+          "columns": [
+            "order_id"
+          ],
+          "references_table": "public.orders",
+          "references_columns": [
+            "order_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "events_order_idx",
+          "columns": [
+            "order_id",
+            "occurred_at"
+          ]
+        }
+      ]
     },
     {
       "name": "public.outbox",
+      "kind": "postgres-table",
       "state": "existing",
       "owner_service": "orders-api",
       "introduced_in": "db/migrations/000_outbox.sql",
       "label_en": "Outbox",
-      "label_zh": "投递箱"
+      "label_zh": "投递箱",
+      "datastore_id": "orders-postgres",
+      "columns": [
+        {
+          "name": "outbox_id",
+          "type": "UUID",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "event_id",
+          "type": "UUID",
+          "nullable": false,
+          "unique": true
+        },
+        {
+          "name": "state",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "attempt",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "next_attempt_at",
+          "type": "TIMESTAMPTZ",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "outbox_id"
+      ],
+      "foreign_keys": [
+        {
+          "name": "outbox_event_fk",
+          "columns": [
+            "event_id"
+          ],
+          "references_table": "public.events",
+          "references_columns": [
+            "event_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "outbox_event_key",
+          "columns": [
+            "event_id"
+          ],
+          "unique": true
+        },
+        {
+          "name": "outbox_due_idx",
+          "columns": [
+            "state",
+            "next_attempt_at"
+          ]
+        }
+      ]
     },
     {
       "name": "public.order_read_model",
+      "kind": "postgres-table",
       "state": "planned",
       "owner_service": "delivery-worker",
       "introduced_in": "TBD",
       "label_en": "Order Read Model",
-      "label_zh": "订单读模型"
+      "label_zh": "订单读模型",
+      "datastore_id": "orders-postgres",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "UUID",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "revision",
+          "type": "BIGINT",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "order_id"
+      ],
+      "foreign_keys": [
+        {
+          "name": "order_read_model_order_fk",
+          "columns": [
+            "order_id"
+          ],
+          "references_table": "public.orders",
+          "references_columns": [
+            "order_id"
+          ]
+        }
+      ],
+      "indexes": []
     }
   ],
   "flows": [
@@ -195,6 +397,7 @@
       "FLOW-ORDER-CREATE-001": "sequenceDiagram\n  autonumber\n  participant A as \"Actor<br/>触发方\"\n  participant S as \"orders-api<br/>Orders API / 订单 API\"\n  participant DB as \"Database<br/>数据库\"\n  participant E as \"public.events<br/>Events / 事件\"\n  participant O as \"public.outbox<br/>Outbox / 投递表\"\n  participant W as \"outbox-worker<br/>Publisher / 投递器\"\n  participant B as \"EventBus<br/>事件总线\"\n  participant C as \"Consumer<br/>消费者\"\n\n  A->>S: trigger flow / 触发流程\n  S->>DB: BEGIN / 开启事务\n  S->>DB: READ n/a / 读取\n  S->>DB: WRITE public.orders:C, public.events:C, public.outbox:C / 写入\n  S->>E: APPEND public.events OrderCreated / 追加事件\n  S->>O: INSERT public.outbox(PENDING) / 写入待投递\n  S->>DB: COMMIT / 提交事务\n\n  W->>O: SELECT PENDING (SKIP LOCKED) / 选择待投递\n  W->>B: publish(message) / 发布消息\n  W->>O: UPDATE status=SENT/FAILED / 更新状态\n\n  B-->>C: deliver message / 投递消息\n  C->>DB: INSERT processed_events (ON CONFLICT DO NOTHING) / 幂等去重\n  C->>DB: UPSERT read models / side effects / 更新读模型与副作用\n",
       "FLOW-ORDER-PUBLISH-001": "sequenceDiagram\n  autonumber\n  participant A as \"Actor<br/>触发方\"\n  participant S as \"delivery-worker<br/>Delivery Worker / 投递 Worker\"\n  participant DB as \"Database<br/>数据库\"\n  participant O as \"public.outbox<br/>Outbox / 投递表\"\n  participant W as \"outbox-worker<br/>Publisher / 投递器\"\n  participant B as \"EventBus<br/>事件总线\"\n  participant C as \"Consumer<br/>消费者\"\n\n  A->>S: trigger flow / 触发流程\n  S->>DB: BEGIN / 开启事务\n  S->>DB: READ public.outbox / 读取\n  S->>DB: WRITE public.outbox:U / 写入\n  S->>O: INSERT public.outbox(PENDING) / 写入待投递\n  S->>DB: COMMIT / 提交事务\n\n  W->>O: SELECT PENDING (SKIP LOCKED) / 选择待投递\n  W->>B: publish(message) / 发布消息\n  W->>O: UPDATE status=SENT/FAILED / 更新状态\n\n  B-->>C: deliver message / 投递消息\n  C->>DB: INSERT processed_events (ON CONFLICT DO NOTHING) / 幂等去重\n  C->>DB: UPSERT read models / side effects / 更新读模型与副作用\n",
       "FLOW-ORDER-PROJECTION-001": "sequenceDiagram\n  autonumber\n  participant A as \"Actor<br/>触发方\"\n  participant S as \"delivery-worker<br/>Delivery Worker / 投递 Worker\"\n  participant DB as \"Database<br/>数据库\"\n\n  A->>S: trigger flow / 触发流程\n  S->>DB: BEGIN / 开启事务\n  S->>DB: READ public.events / 读取\n  S->>DB: WRITE public.order_read_model:U / 写入\n  S->>DB: COMMIT / 提交事务\n"
-    }
+    },
+    "database_mermaid": "erDiagram\n  T_public_orders {\n    UUID order_id PK \"NOT NULL\"\n    TEXT client_request_id UK \"NOT NULL\"\n    TEXT status \"NOT NULL\"\n    TIMESTAMPTZ created_at \"NOT NULL\"\n  }\n  T_public_events {\n    UUID event_id PK \"NOT NULL\"\n    UUID order_id FK \"NOT NULL\"\n    TEXT type \"NOT NULL\"\n    JSONB payload_json \"NOT NULL\"\n    TIMESTAMPTZ occurred_at \"NOT NULL\"\n  }\n  T_public_outbox {\n    UUID outbox_id PK \"NOT NULL\"\n    UUID event_id FK,UK \"NOT NULL\"\n    TEXT state \"NOT NULL\"\n    BIGINT attempt \"NOT NULL; DEFAULT 0\"\n    TIMESTAMPTZ next_attempt_at \"NOT NULL\"\n  }\n  T_public_order_read_model {\n    UUID order_id PK,FK \"NOT NULL\"\n    TEXT status \"NOT NULL\"\n    BIGINT revision \"NOT NULL\"\n  }\n  T_public_orders ||--o{ T_public_events : \"events_order_fk\"\n  T_public_events ||--o{ T_public_outbox : \"outbox_event_fk\"\n  T_public_orders ||--o{ T_public_order_read_model : \"order_read_model_order_fk\"\n"
   }
 }

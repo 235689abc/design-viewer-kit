@@ -1,8 +1,8 @@
 # Design Viewer Kit
 
 Design Viewer Kit turns a small, reviewable flow manifest into a navigable
-design inventory: service and table ownership, CRUD edges, Mermaid diagrams,
-flow detail pages, governance checks, and optional GET-only runtime evidence.
+design inventory: service and table ownership, CRUD edges, database ERD,
+Mermaid diagrams, flow detail pages, governance checks, and optional GET-only runtime evidence.
 It is designed to be copied into an existing project or used as a standalone
 viewer for architecture reviews.
 
@@ -85,6 +85,7 @@ unknown; static design data remains usable.
 
 - service, system, and table ownership
 - flow reads/writes and CRUD matrix
+- datastore inventory, columns, primary/foreign keys, indexes, and database ERD
 - L0 system map, flow sequence, and table impact diagrams
 - design-time governance checks (ownership, idempotency, event/outbox trail)
 - optional runtime health evidence

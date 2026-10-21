@@ -4,5 +4,6 @@
 > ⚠️ Edit `docs/diagrams/flows.json`, then run `python3 tools/gen_diagrams.py` to regenerate.
 
 - L0 System Map / L0 系统地图: `l0_system_map.md`
+- Database Schema / 数据库结构: `database_schema.md`
 - L2 CRUD Matrix / L2 CRUD 矩阵: `crud_matrix.md`
 - Flow sequences / 流程时序图: `flows/`

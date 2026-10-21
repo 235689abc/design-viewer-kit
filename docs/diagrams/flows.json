@@ -24,38 +24,106 @@
       "name_zh": "投递 Worker"
     }
   ],
+  "datastores": [
+    {
+      "id": "orders-postgres",
+      "name": "Orders PostgreSQL",
+      "engine": "PostgreSQL",
+      "schema": "public",
+      "state": "existing",
+      "source_ref": "db/migrations"
+    }
+  ],
   "tables": [
     {
       "name": "public.orders",
+      "kind": "postgres-table",
       "state": "existing",
       "owner_service": "orders-api",
       "introduced_in": "db/migrations/001_orders.sql",
       "label_en": "Orders",
-      "label_zh": "订单"
+      "label_zh": "订单",
+      "datastore_id": "orders-postgres",
+      "columns": [
+        {"name": "order_id", "type": "UUID", "nullable": false, "primary_key": true},
+        {"name": "client_request_id", "type": "TEXT", "nullable": false, "unique": true},
+        {"name": "status", "type": "TEXT", "nullable": false},
+        {"name": "created_at", "type": "TIMESTAMPTZ", "nullable": false}
+      ],
+      "primary_key": ["order_id"],
+      "foreign_keys": [],
+      "indexes": [
+        {"name": "orders_client_request_key", "columns": ["client_request_id"], "unique": true}
+      ]
     },
     {
       "name": "public.events",
+      "kind": "postgres-table",
       "state": "existing",
       "owner_service": "orders-api",
       "introduced_in": "db/migrations/000_events.sql",
       "label_en": "Events",
-      "label_zh": "事件"
+      "label_zh": "事件",
+      "datastore_id": "orders-postgres",
+      "columns": [
+        {"name": "event_id", "type": "UUID", "nullable": false, "primary_key": true},
+        {"name": "order_id", "type": "UUID", "nullable": false},
+        {"name": "type", "type": "TEXT", "nullable": false},
+        {"name": "payload_json", "type": "JSONB", "nullable": false},
+        {"name": "occurred_at", "type": "TIMESTAMPTZ", "nullable": false}
+      ],
+      "primary_key": ["event_id"],
+      "foreign_keys": [
+        {"name": "events_order_fk", "columns": ["order_id"], "references_table": "public.orders", "references_columns": ["order_id"]}
+      ],
+      "indexes": [
+        {"name": "events_order_idx", "columns": ["order_id", "occurred_at"]}
+      ]
     },
     {
       "name": "public.outbox",
+      "kind": "postgres-table",
       "state": "existing",
       "owner_service": "orders-api",
       "introduced_in": "db/migrations/000_outbox.sql",
       "label_en": "Outbox",
-      "label_zh": "投递箱"
+      "label_zh": "投递箱",
+      "datastore_id": "orders-postgres",
+      "columns": [
+        {"name": "outbox_id", "type": "UUID", "nullable": false, "primary_key": true},
+        {"name": "event_id", "type": "UUID", "nullable": false, "unique": true},
+        {"name": "state", "type": "TEXT", "nullable": false},
+        {"name": "attempt", "type": "BIGINT", "nullable": false, "default": "0"},
+        {"name": "next_attempt_at", "type": "TIMESTAMPTZ", "nullable": false}
+      ],
+      "primary_key": ["outbox_id"],
+      "foreign_keys": [
+        {"name": "outbox_event_fk", "columns": ["event_id"], "references_table": "public.events", "references_columns": ["event_id"]}
+      ],
+      "indexes": [
+        {"name": "outbox_event_key", "columns": ["event_id"], "unique": true},
+        {"name": "outbox_due_idx", "columns": ["state", "next_attempt_at"]}
+      ]
     },
     {
       "name": "public.order_read_model",
+      "kind": "postgres-table",
       "state": "planned",
       "owner_service": "delivery-worker",
       "introduced_in": "TBD",
       "label_en": "Order Read Model",
-      "label_zh": "订单读模型"
+      "label_zh": "订单读模型",
+      "datastore_id": "orders-postgres",
+      "columns": [
+        {"name": "order_id", "type": "UUID", "nullable": false, "primary_key": true},
+        {"name": "status", "type": "TEXT", "nullable": false},
+        {"name": "revision", "type": "BIGINT", "nullable": false}
+      ],
+      "primary_key": ["order_id"],
+      "foreign_keys": [
+        {"name": "order_read_model_order_fk", "columns": ["order_id"], "references_table": "public.orders", "references_columns": ["order_id"]}
+      ],
+      "indexes": []
     }
   ],
   "flows": [

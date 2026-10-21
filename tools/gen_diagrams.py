@@ -294,6 +294,154 @@ def node_label_with_top(top: str, en: str, zh: str) -> str:
 def mermaid_escape(text: str) -> str:
     return text.replace('"', '\\"')
 
+def database_entity_id(table_name: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9_]", "_", table_name)
+    return "T_" + (normalized or "table")
+
+def database_entity_ids(tables) -> dict[str, str]:
+    result = {}
+    used = set()
+    for table in tables:
+        table_name = str(table.get("name", ""))
+        base = database_entity_id(table_name)
+        candidate = base
+        suffix = 2
+        while candidate in used:
+            candidate = f"{base}_{suffix}"
+            suffix += 1
+        used.add(candidate)
+        result[table_name] = candidate
+    return result
+
+def database_attribute_id(column_name: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9_]", "_", column_name)
+    if not normalized:
+        return "column"
+    return "c_" + normalized if normalized[0].isdigit() else normalized
+
+def database_type_name(column_type: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9_\[\]]", "_", str(column_type).strip())
+    if not normalized:
+        return "unknown"
+    if normalized[0].isdigit():
+        return "type_" + normalized
+    return normalized
+
+def database_tables(spec):
+    return [
+        table
+        for table in spec.get("tables", [])
+        if isinstance(table, dict)
+        and not table.get("alias_of")
+        and isinstance(table.get("columns"), list)
+        and len(table.get("columns", [])) > 0
+    ]
+
+def build_database_mermaid(spec) -> str:
+    tables = database_tables(spec)
+    table_names = {str(table.get("name", "")) for table in tables}
+    entity_ids = database_entity_ids(tables)
+    lines = ["erDiagram"]
+
+    for table in tables:
+        table_name = str(table.get("name", ""))
+        entity_id = entity_ids[table_name]
+        primary_key = {
+            str(column_name)
+            for column_name in table.get("primary_key", [])
+            if isinstance(column_name, str)
+        }
+        foreign_key_columns = {
+            str(column_name)
+            for foreign_key in table.get("foreign_keys", [])
+            if isinstance(foreign_key, dict)
+            for column_name in foreign_key.get("columns", [])
+            if isinstance(column_name, str)
+        }
+        single_column_unique_indexes = {
+            str(table_index["columns"][0])
+            for table_index in table.get("indexes", [])
+            if isinstance(table_index, dict)
+            and table_index.get("unique") is True
+            and isinstance(table_index.get("columns"), list)
+            and len(table_index["columns"]) == 1
+            and isinstance(table_index["columns"][0], str)
+        }
+        lines.append(f"  {entity_id} {{")
+        for column in table.get("columns", []):
+            if not isinstance(column, dict):
+                continue
+            column_name = str(column.get("name", ""))
+            if not column_name:
+                continue
+            keys = []
+            if column.get("primary_key") is True or column_name in primary_key:
+                keys.append("PK")
+            if column_name in foreign_key_columns:
+                keys.append("FK")
+            if column.get("unique") is True or column_name in single_column_unique_indexes:
+                keys.append("UK")
+            key_suffix = f" {','.join(keys)}" if keys else ""
+            notes = []
+            if column.get("nullable") is False:
+                notes.append("NOT NULL")
+            if column.get("default") not in (None, ""):
+                notes.append(f"DEFAULT {column.get('default')}")
+            if column.get("notes"):
+                notes.append(str(column.get("notes")))
+            comment = f' "{mermaid_escape("; ".join(notes))}"' if notes else ""
+            lines.append(
+                f"    {database_type_name(str(column.get('type', 'unknown')))} "
+                f"{database_attribute_id(column_name)}{key_suffix}{comment}"
+            )
+        lines.append("  }")
+
+    for table in tables:
+        table_name = str(table.get("name", ""))
+        columns_by_name = {
+            str(column.get("name", "")): column
+            for column in table.get("columns", [])
+            if isinstance(column, dict) and column.get("name")
+        }
+        for foreign_key in table.get("foreign_keys", []):
+            if not isinstance(foreign_key, dict):
+                continue
+            referenced_table = str(foreign_key.get("references_table", ""))
+            local_columns = [
+                str(column_name)
+                for column_name in foreign_key.get("columns", [])
+                if isinstance(column_name, str)
+            ]
+            if referenced_table not in table_names or not local_columns:
+                continue
+            required = all(
+                columns_by_name.get(column_name, {}).get("nullable") is False
+                for column_name in local_columns
+            )
+            parent_cardinality = "||" if required else "o|"
+            relation_label = str(foreign_key.get("name", "")).strip() or ",".join(local_columns)
+            lines.append(
+                f"  {entity_ids[referenced_table]} {parent_cardinality}--o{{ "
+                f"{entity_ids[table_name]} : \"{mermaid_escape(relation_label)}\""
+            )
+
+    return "\n".join(lines) + "\n"
+
+def build_database_schema_doc(spec) -> str:
+    tables = database_tables(spec)
+    foreign_key_count = sum(
+        len(table.get("foreign_keys", []))
+        for table in tables
+        if isinstance(table.get("foreign_keys", []), list)
+    )
+    return (
+        "# Database Schema / 数据库结构\n\n"
+        f"> Tables / 数据表: {len(tables)}; Foreign keys / 外键: {foreign_key_count}.\n\n"
+        "```mermaid\n"
+        f"{build_database_mermaid(spec)}"
+        "```\n"
+    )
+
 def validate(spec):
     tnames = [t["name"] for t in spec.get("tables", [])]
     if len(tnames) != len(set(tnames)):
@@ -650,12 +798,14 @@ def export_index_json(spec, generated_dir: Path, out_path: Path, cfg: GenConfig)
             "source_revision": source_meta.get("source_revision", ""),
         },
         "services": services_out,
+        "datastores": [dict(row) for row in spec.get("datastores", []) if isinstance(row, dict)],
         "tables": tables_out,
         "flows": flows_out,
         "crudEdges": build_crud_edges(spec),
         "diagrams": {
             "l0_mermaid": l0_mermaid,
             "flow_mermaid": flow_mermaid,
+            "database_mermaid": build_database_mermaid(spec),
         },
     }
     for key in ("policy", "systems", "source_repositories"):
@@ -745,11 +895,13 @@ def main():
         f"> ⚠️ Edit `{cfg.source_flows_json}`, then run `python3 tools/gen_diagrams.py` to regenerate.\n"
     )
     index.append("- L0 System Map / L0 系统地图: `l0_system_map.md`")
+    index.append("- Database Schema / 数据库结构: `database_schema.md`")
     index.append("- L2 CRUD Matrix / L2 CRUD 矩阵: `crud_matrix.md`")
     index.append("- Flow sequences / 流程时序图: `flows/`")
     write_file(cfg.out_dir / "README.md", "\n".join(index) + "\n")
 
     write_file(cfg.out_dir / "l0_system_map.md", build_l0_system_map(spec))
+    write_file(cfg.out_dir / "database_schema.md", build_database_schema_doc(spec))
     write_file(cfg.out_dir / "crud_matrix.md", build_crud_matrix(spec))
     services = service_index(spec)
 

@@ -54,12 +54,26 @@ manifest。工具默认只读输入并写入明确的生成目录。
   "services": [
     {"id": "orders-api", "name_en": "Orders API", "name_zh": "订单 API"}
   ],
+  "datastores": [
+    {"id": "orders-db", "name": "Orders DB", "engine": "PostgreSQL", "schema": "public"}
+  ],
   "tables": [
     {
       "name": "public.orders",
+      "kind": "postgres-table",
       "state": "existing",
       "owner_service": "orders-api",
-      "introduced_in": "v1"
+      "introduced_in": "v1",
+      "datastore_id": "orders-db",
+      "columns": [
+        {"name": "order_id", "type": "UUID", "nullable": false, "primary_key": true},
+        {"name": "customer_id", "type": "UUID", "nullable": false}
+      ],
+      "primary_key": ["order_id"],
+      "foreign_keys": [],
+      "indexes": [
+        {"name": "orders_customer_idx", "columns": ["customer_id"], "unique": false}
+      ]
     }
   ],
   "flows": [
@@ -82,8 +96,9 @@ manifest。工具默认只读输入并写入明确的生成目录。
 ### 可选字段
 
 - `services[].system_id`, `source_ref`：归属系统和证据位置。
-- `tables[].kind`, `columns`, `notes`, `alias_of`：表类型、列摘要、别名与
-  设计说明。
+- `datastores[]`：数据库实例的 `id`、名称、引擎、schema、状态和源码证据。
+- `tables[].kind`, `datastore_id`, `columns`, `primary_key`, `foreign_keys`,
+  `indexes`, `notes`, `alias_of`：数据库字段与关系、表类型、别名和设计说明。
 - `flows[].actors`, `event_table`, `outbox_table`, `finality`, `kind`,
   `source_ref`, `deprecated`, `replaced_by`：触发方、事件链路、状态和
   证据。
@@ -100,8 +115,9 @@ python3 tools/gen_diagrams.py --config design-viewer.config.json
 npm run build
 ```
 
-校验器会检查重复 ID、未知服务、未知表引用和非法 CRUD 操作；生成器会
-输出 Markdown 图、`index.json` 和可选历史快照。生成时间由 manifest 的
+校验器会检查重复 ID、未知服务/数据库/表引用、非法 CRUD 操作，以及
+字段、主键、外键和索引对列的引用；生成器会输出 CRUD、数据库 ERD、
+流程 Markdown、`index.json` 和可选历史快照。生成时间由 manifest 的
 mtime 稳定计算，便于 CI 检查重复生成。
 
 ## 5. 从现有项目接入
@@ -152,8 +168,8 @@ GET /ops/flows/:id/recent
 
 ## 8. 路线图
 
-当前 MVP 的边界是 flow/table 设计索引。后续可在不破坏现有字段的前提下
-增加：
+当前能力覆盖 flow/table 设计索引和 manifest 驱动的数据库 ERD。后续可在
+不破坏现有字段的前提下增加：
 
 - endpoint：方法、路径、鉴权、输入输出和源码证据；
 - frontend：页面/路由/组件与后端调用关系；

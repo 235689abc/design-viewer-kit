@@ -245,6 +245,16 @@ export function TableDetailPage() {
 
   const canonicalName = canonicalNameForHeat;
   const ownerLabel = getServiceDisplay(table.owner_service, indexes.mapServices);
+  const datastore = (data.datastores ?? []).find((candidate) => candidate.id === table.datastore_id);
+  const primaryKey = new Set(table.primary_key ?? []);
+  const foreignKeyColumns = new Set(
+    (table.foreign_keys ?? []).flatMap((foreignKey) => foreignKey.columns),
+  );
+  const inboundForeignKeys = data.tables.flatMap((candidate) =>
+    (candidate.foreign_keys ?? [])
+      .filter((foreignKey) => foreignKey.references_table === table.name)
+      .map((foreignKey) => ({ table: candidate.name, foreignKey })),
+  );
   const edgesForTable = indexes.edgesByTable.get(canonicalName) ?? [];
   const groups = getRelatedFlowGroups(
     focusedFlowId,
@@ -285,6 +295,11 @@ export function TableDetailPage() {
           <p><strong>Introduced In:</strong> <code>{table.introduced_in || '-'}</code></p>
           <p><strong>Alias Of:</strong> <code>{table.alias_of || '-'}</code></p>
           <p><strong>Canonical:</strong> <code>{canonicalName}</code></p>
+          <p><strong>Kind:</strong> <code>{table.kind || '-'}</code></p>
+          <p><strong>Datastore:</strong>{' '}
+            {datastore ? `${datastore.name} (${datastore.engine})` : <code>{table.datastore_id || '-'}</code>}
+          </p>
+          {table.notes && <p><strong>Notes:</strong> {table.notes}</p>}
           {runtimeBaseUrl && (
             <p>
               <strong>Runtime heat:</strong>{' '}
@@ -305,6 +320,89 @@ export function TableDetailPage() {
             )}
           </div>
         </article>
+
+        {(table.columns?.length ?? 0) > 0 && (
+          <article className="card">
+            <h2>Columns / 字段</h2>
+            <div className="database-column-wrap">
+              <table className="database-column-table">
+                <thead>
+                  <tr><th>Name / 字段</th><th>Type / 类型</th><th>Keys</th><th>Null</th><th>Default</th></tr>
+                </thead>
+                <tbody>
+                  {table.columns?.map((column) => {
+                    const keys: string[] = [];
+                    if (column.primary_key || primaryKey.has(column.name)) keys.push('PK');
+                    if (foreignKeyColumns.has(column.name)) keys.push('FK');
+                    if (column.unique) keys.push('UK');
+                    return (
+                      <tr key={`${table.name}-${column.name}`}>
+                        <td><code>{column.name}</code></td>
+                        <td>{column.type}</td>
+                        <td>{keys.join(' · ') || '-'}</td>
+                        <td>{column.nullable === false ? 'NO' : 'YES'}</td>
+                        <td><code>{column.default ?? '-'}</code></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        )}
+
+        {((table.foreign_keys?.length ?? 0) > 0 || inboundForeignKeys.length > 0) && (
+          <article className="card database-relations-card">
+            <h2>Relations / 表关系</h2>
+            <h3>Outbound Foreign Keys / 出站外键</h3>
+            <ul className="inline-list">
+              {(table.foreign_keys?.length ?? 0) === 0 && <li>-</li>}
+              {table.foreign_keys?.map((foreignKey, index) => (
+                <li key={`outbound-${foreignKey.name || index}`}>
+                  <code>{foreignKey.columns.join(', ')}</code>
+                  {' → '}
+                  <Link to={`/tables/${encodeURIComponent(foreignKey.references_table)}`}>
+                    {foreignKey.references_table}
+                  </Link>
+                  <code>({foreignKey.references_columns.join(', ')})</code>
+                </li>
+              ))}
+            </ul>
+            <h3>Inbound Foreign Keys / 入站外键</h3>
+            <ul className="inline-list">
+              {inboundForeignKeys.length === 0 && <li>-</li>}
+              {inboundForeignKeys.map(({ table: sourceTable, foreignKey }, index) => (
+                <li key={`inbound-${sourceTable}-${foreignKey.name || index}`}>
+                  <Link to={`/tables/${encodeURIComponent(sourceTable)}`}>{sourceTable}</Link>
+                  <code>({foreignKey.columns.join(', ')})</code>
+                  {' → '}
+                  <code>{foreignKey.references_columns.join(', ')}</code>
+                </li>
+              ))}
+            </ul>
+          </article>
+        )}
+
+        {(table.indexes?.length ?? 0) > 0 && (
+          <article className="card">
+            <h2>Indexes / 索引</h2>
+            <div className="database-column-wrap">
+              <table className="database-column-table">
+                <thead><tr><th>Name / 名称</th><th>Columns / 字段</th><th>Unique</th><th>Predicate / 条件</th></tr></thead>
+                <tbody>
+                  {table.indexes?.map((tableIndex) => (
+                    <tr key={`${table.name}-${tableIndex.name}`}>
+                      <td><code>{tableIndex.name}</code></td>
+                      <td>{tableIndex.columns.join(', ')}</td>
+                      <td>{tableIndex.unique ? 'YES' : 'NO'}</td>
+                      <td><code>{tableIndex.where || '-'}</code></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        )}
 
         {focusedFlowId && (
           <article className="card">
