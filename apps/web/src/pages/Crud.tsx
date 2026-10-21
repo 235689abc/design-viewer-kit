@@ -308,13 +308,12 @@ export function CrudPage() {
         colId: 'name',
         field: 'name',
         headerName: 'Name (EN / 中文)',
-        pinned: 'left',
         width: 340,
         minWidth: 220,
         sortable: true,
         resizable: true,
         wrapText: false,
-        headerClass: ['crud-pinned-resize', 'crud-col-divider'],
+        headerClass: 'crud-col-divider',
         cellClass: ['crud-col-divider', 'crud-cell-2line'],
         tooltipField: 'name',
       },
@@ -322,13 +321,11 @@ export function CrudPage() {
         colId: 'owner',
         field: 'owner',
         headerName: 'Owner (EN / 中文)',
-        pinned: 'left',
         width: 260,
         minWidth: 180,
         sortable: true,
         resizable: true,
         wrapText: false,
-        headerClass: 'crud-pinned-resize',
         cellClass: 'crud-cell-2line',
         tooltipField: 'owner',
       },
@@ -366,10 +363,10 @@ export function CrudPage() {
     [edgesByFlow, visibleTables],
   );
 
-  const columnDefs = useMemo<ColDef<CrudRow>[]>(() => [...pinnedColumns, ...tableColumns], [
-    pinnedColumns,
-    tableColumns,
-  ]);
+  const columnDefs = useMemo<ColDef<CrudRow>[]>(
+    () => [pinnedColumns[0], ...tableColumns, ...pinnedColumns.slice(1)],
+    [pinnedColumns, tableColumns],
+  );
 
   const visibleTableIdSet = useMemo(() => {
     const keyword = columnFilter.trim().toLowerCase();
