@@ -1,3 +1,5 @@
+import { useLocale, bi } from '../app/i18n';
+
 type Density = 'compact' | 'normal' | 'comfortable';
 
 type CrudToolbarProps = {
@@ -48,11 +50,14 @@ export function CrudToolbar(props: CrudToolbarProps) {
     onHorizontalIndexChange,
     onExportCsv,
   } = props;
+  const [locale] = useLocale();
 
   return (
     <div className="crud-toolbar">
       <div className="crud-toolbar-group">
-        <label htmlFor="crud-font-size">Font / 字体: {fontSize}px</label>
+        <label htmlFor="crud-font-size">
+          {bi(locale, 'Font', '字体')}: {fontSize}px
+        </label>
         <input
           id="crud-font-size"
           type="range"
@@ -64,31 +69,31 @@ export function CrudToolbar(props: CrudToolbarProps) {
       </div>
 
       <div className="crud-toolbar-group">
-        <label htmlFor="crud-density">Density / 密度</label>
+        <label htmlFor="crud-density">{bi(locale, 'Density', '密度')}</label>
         <select
           id="crud-density"
           value={density}
           onChange={(e) => onDensityChange(e.target.value as Density)}
         >
-          <option value="compact">Compact / 紧凑</option>
-          <option value="normal">Normal / 标准</option>
-          <option value="comfortable">Comfortable / 舒适</option>
+          <option value="compact">{bi(locale, 'Compact', '紧凑')}</option>
+          <option value="normal">{bi(locale, 'Normal', '标准')}</option>
+          <option value="comfortable">{bi(locale, 'Comfortable', '舒适')}</option>
         </select>
       </div>
 
       <div className="crud-toolbar-group">
-        <label htmlFor="crud-flow-filter">Flow Filter / 流程筛选</label>
+        <label htmlFor="crud-flow-filter">{bi(locale, 'Flow Filter', '流程筛选')}</label>
         <input
           id="crud-flow-filter"
           type="text"
           value={flowFilter}
-          placeholder="flow id / name / owner"
+          placeholder={bi(locale, 'flow id, name, or owner', '流程 ID/名称/归属')}
           onChange={(e) => onFlowFilterChange(e.target.value)}
         />
       </div>
 
       <div className="crud-toolbar-group">
-        <label htmlFor="crud-column-filter">Column Filter / 列筛选</label>
+        <label htmlFor="crud-column-filter">{bi(locale, 'Column Filter', '列筛选')}</label>
         <input
           id="crud-column-filter"
           type="text"
@@ -100,7 +105,7 @@ export function CrudToolbar(props: CrudToolbarProps) {
 
       <div className="crud-toolbar-group crud-toolbar-slider-wide">
         <label htmlFor="crud-horizontal-slider">
-          Horizontal Pan / 横向滑动: {horizontalLabel}
+          {bi(locale, 'Horizontal Pan', '横向滑动')}: {horizontalLabel}
         </label>
         <input
           id="crud-horizontal-slider"
@@ -121,7 +126,7 @@ export function CrudToolbar(props: CrudToolbarProps) {
             checked={hideEmptyColumns}
             onChange={(e) => onHideEmptyColumnsChange(e.target.checked)}
           />
-          Hide empty columns / 隐藏空列
+          {bi(locale, 'Hide empty columns', '隐藏空列')}
         </label>
       </div>
 
@@ -134,17 +139,17 @@ export function CrudToolbar(props: CrudToolbarProps) {
             disabled={!runtimeHeatAvailable}
             onChange={(e) => onShowRuntimeHeatChange(e.target.checked)}
           />
-          Show runtime heat / 显示运行热度
+          {bi(locale, 'Show runtime heat', '显示运行热度')}
         </label>
       </div>
 
       <button type="button" className="crud-btn" onClick={onExportCsv}>
-        Export CSV / 导出 CSV
+        {bi(locale, 'Export CSV', '导出 CSV')}
       </button>
 
       <div className="crud-toolbar-meta">
-        <span>flows: {flowCount}</span>
-        <span>tables: {tableCount}</span>
+        <span>{bi(locale, 'flows', '流程')}: {flowCount}</span>
+        <span>{bi(locale, 'tables', '表')}: {tableCount}</span>
         <span>crudEdges: {crudEdgeCount}</span>
       </div>
     </div>

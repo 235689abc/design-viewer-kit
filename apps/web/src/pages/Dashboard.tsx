@@ -39,7 +39,7 @@ export function DashboardPage() {
   const [locale] = useLocale();
   const indexes = useMemo(() => buildProjectIndexes(data), [data]);
   const governance = useMemo(() => runGovernanceChecks(data), [data]);
-  const findings = useMemo(() => collectFindings(data), [data]);
+  const findings = useMemo(() => collectFindings(data, locale), [data, locale]);
   const findingsSummary = useMemo(() => summarizeFindings(findings), [findings]);
   const [runtimeBaseUrl, setRuntimeBaseUrl] = useState<string | null>(() => getRuntimeBaseUrl());
   const [runtimeLoading, setRuntimeLoading] = useState(false);

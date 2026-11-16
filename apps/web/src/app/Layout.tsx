@@ -3,13 +3,11 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../ui/Sidebar';
 import { useProjectData } from './useProjectData';
 import { useLocale, bi } from './i18n';
-import { useTheme } from './theme';
 
 export function Layout() {
   const navigate = useNavigate();
   const { data, loading, reload } = useProjectData();
   const [locale, setLocale] = useLocale();
-  const [theme, setTheme] = useTheme();
   const [globalKeyword, setGlobalKeyword] = useState('');
   const [searchHint, setSearchHint] = useState('');
   const [reloading, setReloading] = useState(false);
@@ -129,15 +127,6 @@ export function Layout() {
           title={bi(locale, 'Switch language', '切换语言')}
         >
           {locale === 'zh' ? 'EN' : '中文'}
-        </button>
-        <button
-          type="button"
-          className="topbar-btn"
-          aria-pressed={theme === 'dark'}
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          title={bi(locale, 'Toggle theme', '切换主题')}
-        >
-          {theme === 'dark' ? '☀' : '☾'}
         </button>
         <button
           type="button"

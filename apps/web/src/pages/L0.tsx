@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { buildProjectIndexes } from '../app/indexes';
+import { type DiagramLocale } from '../app/diagramLabels';
+import { useLocale, bi } from '../app/i18n';
 import { loadRuntimeOverlay } from '../app/runtimeMetrics';
 import { getRuntimeBaseUrl, subscribeRuntimeBaseUrl } from '../app/runtimeClient';
 import { orderedSchemas, schemaDisplayLabel, schemaOf } from '../app/schemaUtils';
@@ -33,17 +35,19 @@ function escapeMermaidLabel(text: string): string {
 function serviceLabel(
   serviceId: string,
   serviceMap: Map<string, { name_en: string; name_zh: string }>,
+  locale: DiagramLocale,
 ): string {
   const service = serviceMap.get(serviceId);
   if (!service) {
     return serviceId;
   }
-  return `${serviceId} | ${service.name_en} / ${service.name_zh}`;
+  return `${serviceId} | ${locale === 'zh' ? service.name_zh : service.name_en}`;
 }
 
 function buildL0SchemaMermaid(input: {
   showTables: boolean;
   showReadEdges: boolean;
+  locale: DiagramLocale;
   serviceMap: Map<string, { name_en: string; name_zh: string }>;
   serviceToSchemas: Map<string, Set<string>>;
   serviceToTables: Map<string, Set<string>>;
@@ -54,6 +58,7 @@ function buildL0SchemaMermaid(input: {
   const {
     showTables,
     showReadEdges,
+    locale,
     serviceMap,
     serviceToSchemas,
     serviceToTables,
@@ -69,12 +74,12 @@ function buildL0SchemaMermaid(input: {
 
   for (const serviceId of serviceIds) {
     const nodeId = safeMermaidId('S', serviceId);
-    lines.push(`${nodeId}["${escapeMermaidLabel(serviceLabel(serviceId, serviceMap))}"]`);
+    lines.push(`${nodeId}["${escapeMermaidLabel(serviceLabel(serviceId, serviceMap, locale))}"]`);
   }
 
   for (const schemaName of schemas) {
     const nodeId = safeMermaidId('SCH', schemaName);
-    lines.push(`${nodeId}["${escapeMermaidLabel(schemaDisplayLabel(schemaName))}"]`);
+    lines.push(`${nodeId}["${escapeMermaidLabel(schemaDisplayLabel(schemaName, locale))}"]`);
   }
 
   let droppedTableCount = 0;
@@ -132,6 +137,7 @@ function buildL0SchemaMermaid(input: {
 
 export function L0Page() {
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
   const indexes = useMemo(() => buildProjectIndexes(data), [data]);
   const viewerRef = useRef<MermaidPanZoomHandle | null>(null);
   const diagramShellRef = useRef<HTMLDivElement | null>(null);
@@ -293,6 +299,7 @@ export function L0Page() {
     const { mermaidCode, droppedTableCount } = buildL0SchemaMermaid({
       showTables,
       showReadEdges,
+      locale,
       serviceMap: indexes.mapServices,
       serviceToSchemas,
       serviceToTables,
@@ -302,13 +309,13 @@ export function L0Page() {
     });
 
     return { schemaStats, mermaidCode, droppedTableCount };
-  }, [data, indexes, showReadEdges, showTables]);
+  }, [data, indexes, locale, showReadEdges, showTables]);
 
   if (loading) {
     return (
       <section className="page">
-        <h1>L0 Map / 系统地图</h1>
-        <p>Loading L0 map... / 正在加载 L0 系统图...</p>
+        <h1>{bi(locale, 'L0 Map', '系统地图')}</h1>
+        <p>{bi(locale, 'Loading L0 map...', '正在加载 L0 系统图...')}</p>
       </section>
     );
   }
@@ -316,20 +323,28 @@ export function L0Page() {
   if (error) {
     return (
       <section className="page">
-        <h1>L0 Map / 系统地图</h1>
-        <p className="error">Failed to load L0 map / 加载 L0 系统图失败: {error}</p>
+        <h1>{bi(locale, 'L0 Map', '系统地图')}</h1>
+        <p className="error">
+          {bi(locale, 'Failed to load L0 map: ', '加载 L0 系统图失败:')}{error}
+        </p>
       </section>
     );
   }
 
   return (
     <section className="page">
-      <h1>L0 Map v2 / 系统地图 v2</h1>
-      <p className="subtle">Schema-first view. Default graph keeps only service → schema edges.</p>
+      <h1>{bi(locale, 'L0 Map v2', '系统地图 v2')}</h1>
+      <p className="subtle">
+        {bi(
+          locale,
+          'Schema-first view. Default graph keeps only service → schema edges.',
+          '以域(schema)为先的视图，默认图只保留服务 → 域的边。',
+        )}
+      </p>
       {runtimeBaseUrl && runtimeWarning && (
         <p className="error">
-          Runtime overlay warning: {runtimeWarning}
-          {' '}（当前已自动降级为 design-only）
+          {bi(locale, 'Runtime overlay warning: ', '运行态叠加警告:')}{runtimeWarning}
+          {' '}{bi(locale, '(automatically degraded to design-only)', '(当前已自动降级为 design-only)')}
         </p>
       )}
 
@@ -337,17 +352,17 @@ export function L0Page() {
         <div className="l0-v2-main">
           <div className="diagram-toolbar">
             <button type="button" className="crud-btn" onClick={() => viewerRef.current?.fit()}>
-              Fit / 适配
+              {bi(locale, 'Fit', '适配')}
             </button>
             <button type="button" className="crud-btn" onClick={() => viewerRef.current?.reset()}>
-              Reset / 重置
+              {bi(locale, 'Reset', '重置')}
             </button>
             <button
               type="button"
               className="crud-btn"
               onClick={() => viewerRef.current?.exportSvg('l0-schema-first.svg')}
             >
-              Export SVG / 导出 SVG
+              {bi(locale, 'Export SVG', '导出 SVG')}
             </button>
             <label className="l0-toggle">
               <input
@@ -355,7 +370,7 @@ export function L0Page() {
                 checked={showTables}
                 onChange={(event) => setShowTables(event.target.checked)}
               />
-              Show tables / 显示表
+              {bi(locale, 'Show tables', '显示表')}
             </label>
             <label className="l0-toggle">
               <input
@@ -363,7 +378,7 @@ export function L0Page() {
                 checked={showReadEdges}
                 onChange={(event) => setShowReadEdges(event.target.checked)}
               />
-              Show read edges / 显示读依赖
+              {bi(locale, 'Show read edges', '显示读依赖')}
             </label>
             <span className="diagram-status">
               {renderState === 'rendered' ? 'Rendered ✓' : renderState === 'error' ? 'Error' : 'Rendering...'}
@@ -372,8 +387,11 @@ export function L0Page() {
 
           {showTables && computed.droppedTableCount > 0 && (
             <p className="subtle">
-              Too many tables in graph. Showing first {L0_TABLE_LIMIT}, hidden {computed.droppedTableCount}.
-              / 表过多，当前仅显示前 {L0_TABLE_LIMIT} 张，其余 {computed.droppedTableCount} 张已隐藏。
+              {bi(
+                locale,
+                `Too many tables in graph. Showing first ${L0_TABLE_LIMIT}, hidden ${computed.droppedTableCount}.`,
+                `表过多，当前仅显示前 ${L0_TABLE_LIMIT} 张，其余 ${computed.droppedTableCount} 张已隐藏。`,
+              )}
             </p>
           )}
 
@@ -396,18 +414,20 @@ export function L0Page() {
                   void toggleDiagramFullscreen();
                 }}
               >
-                {isDiagramFullscreen ? 'Exit Fullscreen / 退出全屏' : 'Fullscreen / 全屏'}
+                {isDiagramFullscreen
+                  ? bi(locale, 'Exit Fullscreen', '退出全屏')
+                  : bi(locale, 'Fullscreen', '全屏')}
               </button>
             </div>
           </div>
 
           <article className="card">
-            <h2>Schema Links / 域链接</h2>
+            <h2>{bi(locale, 'Schema Links', '域链接')}</h2>
             <ul className="inline-list">
               {computed.schemaStats.map((item) => (
                 <li key={`schema-link-inline-${item.schema}`}>
                   <Link to={`/schemas/${encodeURIComponent(item.schema)}`}>
-                    {schemaDisplayLabel(item.schema)}
+                    {schemaDisplayLabel(item.schema, locale)}
                   </Link>
                   {' '}({item.tableCount})
                   {runtimeBaseUrl && (
@@ -420,12 +440,12 @@ export function L0Page() {
         </div>
 
         <aside className="card l0-schema-sidebar">
-          <h2>Schemas / 域列表</h2>
+          <h2>{bi(locale, 'Schemas', '域列表')}</h2>
           <ul className="l0-schema-list">
             {computed.schemaStats.map((item) => (
               <li key={`schema-link-side-${item.schema}`}>
                 <Link to={`/schemas/${encodeURIComponent(item.schema)}`}>
-                  {schemaDisplayLabel(item.schema)}
+                  {schemaDisplayLabel(item.schema, locale)}
                 </Link>
                 <div className="subtle">
                   tables: {item.tableCount} · writers: {item.writeServiceCount} · reads: {item.readFlowCount}

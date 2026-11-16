@@ -1,3 +1,4 @@
+import { dl, type DiagramLocale } from './diagramLabels';
 import { orderedSchemas, schemaDisplayLabel, schemaOf } from './schemaUtils';
 import type { FlowRecord, ProjectData } from './useProjectData';
 
@@ -10,6 +11,7 @@ export type FlowMapOptions = {
   showTables: boolean;
   schemasOnly: boolean;
   maxTablesPerSchema?: number;
+  locale?: DiagramLocale;
 };
 
 export type BuildFlowMapResult = {
@@ -104,18 +106,18 @@ function groupWrites(flow: FlowRecord, aliasMap: Map<string, string>): GroupedWr
   return grouped;
 }
 
-function serviceLabel(data: ProjectData, ownerService: string): string {
+function serviceLabel(data: ProjectData, ownerService: string, locale: DiagramLocale): string {
   const service = data.services.find((item) => item.id === ownerService);
   if (!service) {
     return ownerService || 'unknown';
   }
-  return `${ownerService} | ${service.name_en} / ${service.name_zh}`;
+  return `${ownerService} | ${locale === 'zh' ? service.name_zh : service.name_en}`;
 }
 
-function flowTitle(flow: FlowRecord): string {
+function flowTitle(flow: FlowRecord, locale: DiagramLocale): string {
   const en = flow.name_en || flow.id;
   const zh = flow.name_zh || flow.name_en || flow.id;
-  return `${flow.id} — ${en} / ${zh}`;
+  return `${flow.id} — ${locale === 'zh' ? zh : en}`;
 }
 
 function appendReadNodes(
@@ -125,14 +127,14 @@ function appendReadNodes(
 ) {
   const schemas = orderedSchemas(groupedReads.keys());
   if (schemas.length === 0) {
-    lines.push('READS --> READS_NONE["No reads / 无读取"]');
+    lines.push(`READS --> READS_NONE["${dl(options.locale, 'No reads', '无读取')}"]`);
     return;
   }
 
   const showTableNodes = options.showTables && !options.schemasOnly;
   for (const schemaName of schemas) {
     const schemaNodeId = safeNodeId('RSCHEMA', schemaName);
-    lines.push(`${schemaNodeId}["${escapeLabel(schemaDisplayLabel(schemaName))}"]`);
+    lines.push(`${schemaNodeId}["${escapeLabel(schemaDisplayLabel(schemaName, options.locale))}"]`);
     lines.push(`READS --> ${schemaNodeId}`);
 
     if (!showTableNodes) {
@@ -149,7 +151,9 @@ function appendReadNodes(
     }
     if (hiddenCount > 0) {
       const moreNodeId = safeNodeId('R_MORE', `${schemaName}_${hiddenCount}`);
-      lines.push(`${moreNodeId}["+${hiddenCount} more / 其余${hiddenCount}"]`);
+      lines.push(
+        `${moreNodeId}["${dl(options.locale, `+${hiddenCount} more`, `其余${hiddenCount}`)}"]`,
+      );
       lines.push(`${schemaNodeId} --> ${moreNodeId}`);
     }
   }
@@ -162,14 +166,14 @@ function appendWriteNodes(
 ) {
   const schemas = orderedSchemas(groupedWrites.keys());
   if (schemas.length === 0) {
-    lines.push('WRITES --> WRITES_NONE["No writes / 无写入"]');
+    lines.push(`WRITES --> WRITES_NONE["${dl(options.locale, 'No writes', '无写入')}"]`);
     return;
   }
 
   const showTableNodes = options.showTables && !options.schemasOnly;
   for (const schemaName of schemas) {
     const schemaNodeId = safeNodeId('WSCHEMA', schemaName);
-    lines.push(`${schemaNodeId}["${escapeLabel(schemaDisplayLabel(schemaName))}"]`);
+    lines.push(`${schemaNodeId}["${escapeLabel(schemaDisplayLabel(schemaName, options.locale))}"]`);
     lines.push(`WRITES --> ${schemaNodeId}`);
 
     if (!showTableNodes) {
@@ -186,13 +190,15 @@ function appendWriteNodes(
     }
     if (hiddenCount > 0) {
       const moreNodeId = safeNodeId('W_MORE', `${schemaName}_${hiddenCount}`);
-      lines.push(`${moreNodeId}["+${hiddenCount} more / 其余${hiddenCount}"]`);
+      lines.push(
+        `${moreNodeId}["${dl(options.locale, `+${hiddenCount} more`, `其余${hiddenCount}`)}"]`,
+      );
       lines.push(`${schemaNodeId} --> ${moreNodeId}`);
     }
   }
 }
 
-function appendEventNodes(lines: string[], flow: FlowRecord) {
+function appendEventNodes(lines: string[], flow: FlowRecord, locale: DiagramLocale) {
   const events = Array.from(
     new Set(
       flow.events_appended
@@ -202,12 +208,14 @@ function appendEventNodes(lines: string[], flow: FlowRecord) {
   );
 
   if (events.length === 0) {
-    lines.push('EVTS --> EVT_NONE["No events / 无事件"]');
+    lines.push(`EVTS --> EVT_NONE["${dl(locale, 'No events', '无事件')}"]`);
     return;
   }
 
   if (events.length > EVENT_NODE_LIMIT) {
-    lines.push(`EVTS --> EVT_COUNT["${events.length} events / ${events.length}个事件"]`);
+    lines.push(
+      `EVTS --> EVT_COUNT["${dl(locale, `${events.length} events`, `${events.length}个事件`)}"]`,
+    );
     return;
   }
 
@@ -230,13 +238,14 @@ export function buildFlowMapMermaid(
   flowId: string,
   options: FlowMapOptions,
 ): BuildFlowMapResult {
+  const locale: DiagramLocale = options.locale ?? 'zh';
   if (!data) {
-    return errorResult('Project data not loaded / 项目数据尚未加载');
+    return errorResult(dl(locale, 'Project data not loaded', '项目数据尚未加载'));
   }
 
   const flow = data.flows.find((item) => item.id === flowId);
   if (!flow) {
-    return errorResult(`Flow not found: ${flowId} / 未找到流程`);
+    return errorResult(dl(locale, `Flow not found: ${flowId}`, `未找到流程:${flowId}`));
   }
 
   const mergedOptions: Required<FlowMapOptions> = {
@@ -244,6 +253,7 @@ export function buildFlowMapMermaid(
     showTables: options.showTables,
     schemasOnly: options.schemasOnly,
     maxTablesPerSchema: options.maxTablesPerSchema ?? DEFAULT_MAX_TABLES_PER_SCHEMA,
+    locale,
   };
 
   const aliasMap = buildAliasMap(data);
@@ -252,16 +262,16 @@ export function buildFlowMapMermaid(
 
   const lines: string[] = [];
   lines.push('graph LR');
-  lines.push(`FLOW["${escapeLabel(flowTitle(flow))}"]`);
-  lines.push('ACT["Actor / 触发方"]');
-  lines.push(`SVC["${escapeLabel(serviceLabel(data, flow.owner_service))}"]`);
-  lines.push('READS["Reads / 读取"]');
-  lines.push('WRITES["Writes / 写入"]');
-  lines.push('EVTS["Events / 事件"]');
-  lines.push('OUT["outbox / Outbox 投递"]');
-  lines.push('BUS["Event Bus / 事件总线"]');
-  lines.push('CONS["Consumer / 消费者"]');
-  lines.push('SIDE["Read Models & Side Effects / 读模型与副作用"]');
+  lines.push(`FLOW["${escapeLabel(flowTitle(flow, locale))}"]`);
+  lines.push(`ACT["${dl(locale, 'Actor', '触发方')}"]`);
+  lines.push(`SVC["${escapeLabel(serviceLabel(data, flow.owner_service, locale))}"]`);
+  lines.push(`READS["${dl(locale, 'Reads', '读取')}"]`);
+  lines.push(`WRITES["${dl(locale, 'Writes', '写入')}"]`);
+  lines.push(`EVTS["${dl(locale, 'Events', '事件')}"]`);
+  lines.push(`OUT["${dl(locale, 'outbox', 'Outbox 投递')}"]`);
+  lines.push(`BUS["${dl(locale, 'Event Bus', '事件总线')}"]`);
+  lines.push(`CONS["${dl(locale, 'Consumer', '消费者')}"]`);
+  lines.push(`SIDE["${dl(locale, 'Read Models & Side Effects', '读模型与副作用')}"]`);
   lines.push('FLOW --> ACT');
   lines.push('ACT --> SVC');
   if (mergedOptions.showReads) {
@@ -271,7 +281,7 @@ export function buildFlowMapMermaid(
   lines.push('SVC --> WRITES');
   appendWriteNodes(lines, groupedWrites, mergedOptions);
   lines.push('SVC --> EVTS');
-  appendEventNodes(lines, flow);
+  appendEventNodes(lines, flow, locale);
   lines.push('EVTS --> OUT');
   lines.push('OUT --> BUS');
   lines.push('BUS --> CONS');

@@ -1,5 +1,6 @@
 import type { ProjectData } from './useProjectData';
 import { runGovernanceChecks } from './governanceRules';
+import type { DiagramLocale } from './diagramLabels';
 
 /**
  * 发现(Findings)聚合器——把三类信号统一成一个模型:
@@ -54,7 +55,10 @@ export function inferSeverityFromNote(note: string): FindingSeverity {
   return 'info';
 }
 
-export function collectFindings(data: ProjectData | null): Finding[] {
+export function collectFindings(
+  data: ProjectData | null,
+  locale: DiagramLocale = 'zh',
+): Finding[] {
   if (!data) {
     return [];
   }
@@ -122,7 +126,7 @@ export function collectFindings(data: ProjectData | null): Finding[] {
     pushNotes(table.notes, target);
   }
 
-  const governance = runGovernanceChecks(data);
+  const governance = runGovernanceChecks(data, locale);
   for (const issue of governance.all) {
     findings.push({
       ref: issue.rule,

@@ -9,7 +9,7 @@ import {
 } from 'react';
 import mermaid from 'mermaid';
 import svgPanZoom from 'svg-pan-zoom';
-import { useTheme, type Theme } from '../app/theme';
+import { useLocale, bi } from '../app/i18n';
 
 type MermaidStatus = 'idle' | 'rendered' | 'error';
 
@@ -53,44 +53,47 @@ type PanZoomInstance = {
   destroy: () => void;
 };
 
-// mermaid 调色与全站 --dv-* token 同源(亮/暗两套);initialize 幂等,可随主题重调
-const MERMAID_THEME_VARIABLES: Record<Theme, Record<string, string>> = {
-  light: {
-    background: '#ffffff',
-    primaryColor: '#eef1f5',
-    primaryBorderColor: '#bcc5d2',
-    primaryTextColor: '#1b2434',
-    lineColor: '#8493a8',
-    secondaryColor: '#e8eefc',
-    secondaryBorderColor: '#1d4ed8',
-    tertiaryColor: '#e5f4ea',
-    edgeLabelBackground: '#ffffff',
-    clusterBkg: '#f4f6f9',
-    clusterBorder: '#d8dee7',
-  },
-  dark: {
-    background: '#161d29',
-    primaryColor: '#1e2735',
-    primaryBorderColor: '#3d4a5f',
-    primaryTextColor: '#e7ecf4',
-    lineColor: '#71809a',
-    secondaryColor: '#1c2942',
-    secondaryBorderColor: '#8ab0ff',
-    tertiaryColor: '#1d3328',
-    edgeLabelBackground: '#161d29',
-    clusterBkg: '#0f141d',
-    clusterBorder: '#2b3648',
-  },
+// mermaid 调色=纯白底黑字灰线(与全站单色定调一致);initialize 幂等
+const MERMAID_THEME_VARIABLES: Record<string, string> = {
+  background: '#ffffff',
+  primaryColor: '#f5f5f5',
+  primaryBorderColor: '#000000',
+  primaryTextColor: '#000000',
+  lineColor: '#666666',
+  secondaryColor: '#ffffff',
+  secondaryBorderColor: '#000000',
+  secondaryTextColor: '#000000',
+  tertiaryColor: '#ebebeb',
+  tertiaryBorderColor: '#666666',
+  tertiaryTextColor: '#000000',
+  edgeLabelBackground: '#ffffff',
+  clusterBkg: '#fafafa',
+  clusterBorder: '#999999',
+  titleColor: '#000000',
+  noteBkgColor: '#f5f5f5',
+  noteBorderColor: '#999999',
+  noteTextColor: '#000000',
+  actorBkg: '#f5f5f5',
+  actorBorder: '#000000',
+  actorTextColor: '#000000',
+  signalColor: '#000000',
+  signalTextColor: '#000000',
+  labelBoxBkgColor: '#ffffff',
+  labelBoxBorderColor: '#000000',
+  labelTextColor: '#000000',
+  loopTextColor: '#000000',
+  activationBorderColor: '#000000',
+  sequenceNumberColor: '#ffffff',
 };
 
 let renderSeq = 0;
 
-function ensureMermaidInit(theme: Theme) {
+function ensureMermaidInit() {
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'loose',
     theme: 'base',
-    themeVariables: MERMAID_THEME_VARIABLES[theme],
+    themeVariables: MERMAID_THEME_VARIABLES,
     flowchart: {
       htmlLabels: false,
       useMaxWidth: false,
@@ -272,9 +275,9 @@ function normalizeSvgViewBox(svgEl: SVGSVGElement) {
 export const MermaidPanZoom = forwardRef<MermaidPanZoomHandle, MermaidPanZoomProps>(
   function MermaidPanZoom(props, ref) {
     const { title, mermaidCode, height = '70vh', onReady } = props;
-    const [theme] = useTheme();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const panZoomRef = useRef<PanZoomInstance | null>(null);
+    const [locale] = useLocale();
     const [status, setStatus] = useState<MermaidStatus>('idle');
     const [errorText, setErrorText] = useState('');
 
@@ -439,13 +442,13 @@ export const MermaidPanZoom = forwardRef<MermaidPanZoomHandle, MermaidPanZoomPro
         const code = mermaidCode.trim();
         if (!code) {
           setStatus('error');
-          setErrorText('No diagram source found / 未找到图源码');
+          setErrorText(bi(locale, 'No diagram source found', '未找到图源码'));
           onReady?.({ status: 'error', error: 'No diagram source found' });
           return;
         }
 
         try {
-          ensureMermaidInit(theme);
+          ensureMermaidInit();
           const { svg } = await mermaid.render(`design_viewer_${runId}`, code);
           if (cancelled || runId !== renderSeq) {
             return;
@@ -494,7 +497,7 @@ export const MermaidPanZoom = forwardRef<MermaidPanZoomHandle, MermaidPanZoomPro
           containerRef.current.innerHTML = '';
         }
       };
-    }, [destroyPanZoom, fitToViewBox, mermaidCode, onReady, theme]);
+    }, [destroyPanZoom, fitToViewBox, locale, mermaidCode, onReady]);
 
     useEffect(() => {
       const host = containerRef.current;

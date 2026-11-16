@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { buildProjectIndexes, getServiceDisplay, hasReadOps, hasWriteOps } from '../app/indexes';
+import type { DiagramLocale } from '../app/diagramLabels';
+import { useLocale, bi } from '../app/i18n';
 import { schemaDisplayLabel, schemaNodeLabel, schemaOf } from '../app/schemaUtils';
 import { type FlowRecord, useProjectData } from '../app/useProjectData';
 import {
@@ -49,6 +51,7 @@ function buildSchemaMiniGraph(
   writeFlowSummaries: FlowTouchSummary[],
   readFlowSummaries: FlowTouchSummary[],
   edgesByTable: Map<string, Array<{ flow_id: string; ops: string }>>,
+  locale: DiagramLocale,
 ): string {
   const selectedTables = tableStats.slice(0, 25).map((item) => item.tableName);
   const flowScore = new Map<string, number>();
@@ -66,7 +69,7 @@ function buildSchemaMiniGraph(
 
   const lines: string[] = [];
   lines.push('graph LR');
-  lines.push(`SCH["${escapeMermaidLabel(schemaNodeLabel(schemaName))}"]`);
+  lines.push(`SCH["${escapeMermaidLabel(schemaNodeLabel(schemaName, locale))}"]`);
 
   for (const tableName of selectedTables) {
     const tableId = safeMermaidId('T', tableName);
@@ -104,6 +107,7 @@ export function SchemaDetailPage() {
   const { name } = useParams();
   const schemaName = decodeURIComponent(name ?? '').trim().toLowerCase();
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
   const indexes = useMemo(() => buildProjectIndexes(data), [data]);
   const [tableKeyword, setTableKeyword] = useState('');
   const miniGraphRef = useRef<MermaidPanZoomHandle | null>(null);
@@ -156,8 +160,8 @@ export function SchemaDetailPage() {
   if (loading) {
     return (
       <section className="page">
-        <h1>Schema Detail / 域详情</h1>
-        <p>Loading schema detail... / 正在加载域详情...</p>
+        <h1>{bi(locale, 'Schema Detail', '域详情')}</h1>
+        <p>{bi(locale, 'Loading schema detail...', '正在加载域详情...')}</p>
       </section>
     );
   }
@@ -165,8 +169,10 @@ export function SchemaDetailPage() {
   if (error) {
     return (
       <section className="page">
-        <h1>Schema Detail / 域详情</h1>
-        <p className="error">Failed to load schema detail / 加载域详情失败: {error}</p>
+        <h1>{bi(locale, 'Schema Detail', '域详情')}</h1>
+        <p className="error">
+          {bi(locale, 'Failed to load schema detail: ', '加载域详情失败:')}{error}
+        </p>
       </section>
     );
   }
@@ -174,9 +180,9 @@ export function SchemaDetailPage() {
   if (!data || !schemaName) {
     return (
       <section className="page">
-        <h1>Schema Detail / 域详情</h1>
-        <p>Schema not found / 未找到域。</p>
-        <p><Link to="/l0">Back to L0 / 返回 L0</Link></p>
+        <h1>{bi(locale, 'Schema Detail', '域详情')}</h1>
+        <p>{bi(locale, 'Schema not found.', '未找到域。')}</p>
+        <p><Link to="/l0">{bi(locale, 'Back to L0', '返回 L0')}</Link></p>
       </section>
     );
   }
@@ -189,9 +195,11 @@ export function SchemaDetailPage() {
   if (tablesInSchema.length === 0) {
     return (
       <section className="page">
-        <h1>Schema Detail / 域详情</h1>
-        <p>Schema not found / 未找到域: <code>{schemaName}</code></p>
-        <p><Link to="/l0">Back to L0 / 返回 L0</Link></p>
+        <h1>{bi(locale, 'Schema Detail', '域详情')}</h1>
+        <p>
+          {bi(locale, 'Schema not found', '未找到域')}: <code>{schemaName}</code>
+        </p>
+        <p><Link to="/l0">{bi(locale, 'Back to L0', '返回 L0')}</Link></p>
       </section>
     );
   }
@@ -282,7 +290,7 @@ export function SchemaDetailPage() {
       serviceId,
       flowCount: stat.flowCount,
       tableCount: stat.tableSet.size,
-      display: getServiceDisplay(serviceId, indexes.mapServices),
+      display: getServiceDisplay(serviceId, indexes.mapServices, locale),
     }))
     .sort((a, b) => b.flowCount - a.flowCount || a.serviceId.localeCompare(b.serviceId));
 
@@ -297,30 +305,31 @@ export function SchemaDetailPage() {
     writeFlowSummaries,
     readFlowSummaries,
     indexes.edgesByTable,
+    locale,
   );
 
   return (
     <section className="page">
-      <h1>Schema Detail / 域详情</h1>
+      <h1>{bi(locale, 'Schema Detail', '域详情')}</h1>
       <p className="subtle">
-        <code>{schemaDisplayLabel(schemaName)}</code>
-        {' '}| tables: {tablesInSchema.length}
-        {' '}| write flows: {writeFlowSummaries.length}
-        {' '}| read flows: {readFlowSummaries.length}
+        <code>{schemaDisplayLabel(schemaName, locale)}</code>
+        {' '}{bi(locale, '| tables', '| 表数')}: {tablesInSchema.length}
+        {' '}{bi(locale, '| write flows', '| 写流程')}: {writeFlowSummaries.length}
+        {' '}{bi(locale, '| read flows', '| 读流程')}: {readFlowSummaries.length}
       </p>
       <p>
-        <Link to="/l0">Back to L0 / 返回 L0</Link>
+        <Link to="/l0">{bi(locale, 'Back to L0', '返回 L0')}</Link>
         {' | '}
         <Link to={`/crud?column=${encodeURIComponent(schemaName)}`}>
-          Open CRUD filtered / 打开 CRUD 并过滤
+          {bi(locale, 'Open CRUD filtered', '打开 CRUD 并过滤')}
         </Link>
       </p>
 
       <div className="detail-grid">
         <article className="card">
-          <h2>Tables in Schema / 该域数据表</h2>
+          <h2>{bi(locale, 'Tables in Schema', '该域数据表')}</h2>
           <div className="table-lens-toolbar">
-            <label htmlFor="schema-table-filter">Search / 搜索表名</label>
+            <label htmlFor="schema-table-filter">{bi(locale, 'Search', '搜索表名')}</label>
             <input
               id="schema-table-filter"
               type="text"
@@ -328,7 +337,9 @@ export function SchemaDetailPage() {
               placeholder={`${schemaName}.*`}
               onChange={(event) => setTableKeyword(event.target.value)}
             />
-            <span className="subtle">visible: {filteredTables.length} / {tablesInSchema.length}</span>
+            <span className="subtle">
+              {bi(locale, 'visible', '可见')}: {filteredTables.length}/{tablesInSchema.length}
+            </span>
           </div>
           <ul className="inline-list">
             {filteredTables.map((table) => (
@@ -341,58 +352,59 @@ export function SchemaDetailPage() {
         </article>
 
         <article className="card">
-          <h2>Owner Services / 写入服务</h2>
+          <h2>{bi(locale, 'Owner Services', '写入服务')}</h2>
           <ul className="inline-list">
             {ownerServices.length === 0 && <li>-</li>}
             {ownerServices.map((service) => (
               <li key={`owner-service-${service.serviceId}`}>
-                {service.display} (flows: {service.flowCount}, tables: {service.tableCount})
+                {service.display} ({bi(locale, 'flows', '流程')}: {service.flowCount}, {bi(locale, 'tables', '表')}:{' '}
+                {service.tableCount})
               </li>
             ))}
           </ul>
         </article>
 
         <article className="card">
-          <h2>Top Write Flows / 写入最多流程</h2>
+          <h2>{bi(locale, 'Top Write Flows', '写入最多流程')}</h2>
           <ul className="inline-list">
             {writeFlowSummaries.length === 0 && <li>-</li>}
             {writeFlowSummaries.map((item) => (
               <li key={`schema-write-flow-${item.flow.id}`}>
                 <Link to={`/flows/${encodeURIComponent(item.flow.id)}`}>{item.flow.id}</Link>
-                {' '}({item.count}) - {item.flow.name_en} / {item.flow.name_zh}
+                {' '}({item.count}) - {locale === 'zh' ? item.flow.name_zh : item.flow.name_en}
               </li>
             ))}
           </ul>
         </article>
 
         <article className="card">
-          <h2>Top Read Flows / 读取最多流程</h2>
+          <h2>{bi(locale, 'Top Read Flows', '读取最多流程')}</h2>
           <ul className="inline-list">
             {readFlowSummaries.length === 0 && <li>-</li>}
             {readFlowSummaries.map((item) => (
               <li key={`schema-read-flow-${item.flow.id}`}>
                 <Link to={`/flows/${encodeURIComponent(item.flow.id)}`}>{item.flow.id}</Link>
-                {' '}({item.count}) - {item.flow.name_en} / {item.flow.name_zh}
+                {' '}({item.count}) - {locale === 'zh' ? item.flow.name_zh : item.flow.name_en}
               </li>
             ))}
           </ul>
         </article>
 
         <article className="card">
-          <h2>Schema Mini Graph / 域内影响图</h2>
+          <h2>{bi(locale, 'Schema Mini Graph', '域内影响图')}</h2>
           <div className="diagram-toolbar">
             <button type="button" className="crud-btn" onClick={() => miniGraphRef.current?.fit()}>
-              Fit / 适配
+              {bi(locale, 'Fit', '适配')}
             </button>
             <button type="button" className="crud-btn" onClick={() => miniGraphRef.current?.reset()}>
-              Reset / 重置
+              {bi(locale, 'Reset', '重置')}
             </button>
             <button
               type="button"
               className="crud-btn"
               onClick={() => miniGraphRef.current?.exportSvg(`schema-${schemaName}-impact.svg`)}
             >
-              Export SVG / 导出 SVG
+              {bi(locale, 'Export SVG', '导出 SVG')}
             </button>
             <span className="diagram-status">
               {miniGraphStatus === 'rendered' ? 'Rendered ✓' : miniGraphStatus === 'error' ? 'Error' : 'Rendering...'}
@@ -415,7 +427,9 @@ export function SchemaDetailPage() {
                 void toggleMiniGraphFullscreen();
               }}
             >
-              {isMiniGraphFullscreen ? 'Exit Fullscreen / 退出全屏' : 'Fullscreen / 全屏'}
+              {isMiniGraphFullscreen
+                ? bi(locale, 'Exit Fullscreen', '退出全屏')
+                : bi(locale, 'Fullscreen', '全屏')}
             </button>
           </div>
         </article>

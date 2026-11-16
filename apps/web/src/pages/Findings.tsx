@@ -46,7 +46,7 @@ export function FindingsPage() {
   const { data, loading, error } = useProjectData();
   const [locale] = useLocale();
 
-  const findings = useMemo(() => collectFindings(data), [data]);
+  const findings = useMemo(() => collectFindings(data, locale), [data, locale]);
   const summary = useMemo(() => summarizeFindings(findings), [findings]);
   const groups = useMemo(() => groupFindingsBySeverity(findings), [findings]);
 

@@ -1,3 +1,5 @@
+import type { DiagramLocale } from './diagramLabels';
+
 const PRIORITY_SCHEMAS = ['public', 'core', 'domain', 'integration'] as const;
 
 const SCHEMA_ZH_MAP: Record<string, string> = {
@@ -18,16 +20,22 @@ export function schemaOf(tableName: string): string {
   return 'public';
 }
 
-export function schemaDisplayLabel(schemaName: string): string {
+export function schemaDisplayLabel(schemaName: string, locale: DiagramLocale = 'zh'): string {
   const normalized = schemaName.trim();
   const zh = SCHEMA_ZH_MAP[normalized];
-  return zh ? `${normalized} / ${zh}` : normalized;
+  if (!zh) {
+    return normalized;
+  }
+  return locale === 'zh' ? zh : normalized;
 }
 
-export function schemaNodeLabel(schemaName: string): string {
+export function schemaNodeLabel(schemaName: string, locale: DiagramLocale = 'zh'): string {
   const normalized = schemaName.trim();
   const zh = SCHEMA_ZH_MAP[normalized];
-  return zh ? `${normalized}<br/>${zh}` : normalized;
+  if (!zh) {
+    return normalized;
+  }
+  return locale === 'zh' ? zh : normalized;
 }
 
 export function orderedSchemas(schemaNames: Iterable<string>): string[] {

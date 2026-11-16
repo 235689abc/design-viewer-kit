@@ -1,3 +1,4 @@
+import type { DiagramLocale } from './diagramLabels';
 import type {
   CrudEdgeRecord,
   FlowRecord,
@@ -41,9 +42,10 @@ export function hasWriteOps(ops: string): boolean {
 export function getServiceDisplay(
   ownerService: string,
   serviceMap: Map<string, ServiceNameRecord>,
+  locale: DiagramLocale = 'zh',
 ): string {
   const svc = serviceMap.get(ownerService);
-  return svc ? `${svc.name_en} / ${svc.name_zh}` : ownerService || '-';
+  return svc ? (locale === 'zh' ? svc.name_zh : svc.name_en) : ownerService || '-';
 }
 
 export function buildProjectIndexes(data: ProjectData | null): ProjectIndexes {

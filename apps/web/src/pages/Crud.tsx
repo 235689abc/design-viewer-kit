@@ -15,6 +15,7 @@ import {
 } from 'ag-grid-community';
 import { useProjectData } from '../app/useProjectData';
 import { buildProjectIndexes, getServiceDisplay } from '../app/indexes';
+import { useLocale, bi } from '../app/i18n';
 import { schemaOf } from '../app/schemaUtils';
 import { loadRuntimeOverlay, type RuntimeFlowMetric } from '../app/runtimeMetrics';
 import { getRuntimeBaseUrl, subscribeRuntimeBaseUrl } from '../app/runtimeClient';
@@ -94,6 +95,7 @@ export function CrudPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
 
   const [fontSize, setFontSize] = useState(13);
   const [density, setDensity] = useState<Density>('normal');
@@ -274,10 +276,10 @@ export function CrudPage() {
 
     return data.flows.map((flow) => ({
       flowId: flow.id,
-      name: `${flow.name_en} / ${flow.name_zh}`,
-      owner: getServiceDisplay(flow.owner_service, mapServices),
+      name: locale === 'zh' ? flow.name_zh : flow.name_en,
+      owner: getServiceDisplay(flow.owner_service, mapServices, locale),
     }));
-  }, [data, mapServices]);
+  }, [data, locale, mapServices]);
 
   const pinnedColumns = useMemo<ColDef<CrudRow>[]>(
     () => [
@@ -300,7 +302,7 @@ export function CrudPage() {
       {
         colId: 'name',
         field: 'name',
-        headerName: 'Name (EN / 中文)',
+        headerName: bi(locale, 'Name', '名称'),
         pinned: 'left',
         width: 640,
         minWidth: 460,
@@ -314,7 +316,7 @@ export function CrudPage() {
       {
         colId: 'owner',
         field: 'owner',
-        headerName: 'Owner (EN / 中文)',
+        headerName: bi(locale, 'Owner', '归属服务'),
         pinned: 'left',
         width: 460,
         minWidth: 320,
@@ -326,7 +328,7 @@ export function CrudPage() {
         tooltipField: 'owner',
       },
     ],
-    [runtimeFlowMetrics, showRuntimeHeat],
+    [locale, runtimeFlowMetrics, showRuntimeHeat],
   );
 
   const tableColumns = useMemo<ColDef<CrudRow>[]>(
@@ -522,25 +524,43 @@ export function CrudPage() {
 
   return (
     <section className="page crud-page">
-      <h1>CRUD Matrix / CRUD 矩阵</h1>
-      <p className="subtle">Structured Explorer from /data/index.json (no markdown parsing).</p>
+      <h1>{bi(locale, 'CRUD Matrix', 'CRUD 矩阵')}</h1>
+      <p className="subtle">
+        {bi(
+          locale,
+          'Structured Explorer from /data/index.json (no markdown parsing).',
+          '基于 /data/index.json 的结构化浏览器(不解析 markdown)。',
+        )}
+      </p>
 
-      {loading && <p>Loading CRUD matrix... / 正在加载 CRUD 矩阵...</p>}
+      {loading && <p>{bi(locale, 'Loading CRUD matrix...', '正在加载 CRUD 矩阵...')}</p>}
 
-      {error && <p className="error">Failed to load CRUD matrix / 加载 CRUD 矩阵失败: {error}</p>}
+      {error && (
+        <p className="error">
+          {bi(locale, 'Failed to load CRUD matrix: ', '加载 CRUD 矩阵失败:')}{error}
+        </p>
+      )}
       {!error && runtimeBaseUrl && runtimeWarning && (
         <p className="error">
-          Runtime overlay warning: {runtimeWarning}
-          {' '}（接口不可用时会自动退回 design-only）
+          {bi(locale, 'Runtime overlay warning: ', '运行态叠加警告:')}{runtimeWarning}
+          {' '}
+          {bi(
+            locale,
+            '(falls back to design-only when the endpoint is unavailable)',
+            '(接口不可用时会自动退回 design-only)',
+          )}
         </p>
       )}
       {!error && runtimeBaseUrl && runtimeLoading && (
-        <p className="subtle">Loading runtime heat... / 正在加载运行热度...</p>
+        <p className="subtle">{bi(locale, 'Loading runtime heat...', '正在加载运行热度...')}</p>
       )}
       {!error && !runtimeBaseUrl && (
         <p className="subtle">
-          Runtime heat disabled. Set Runtime URL in Settings to enable.
-          {' '} / 未配置 Runtime URL，当前为纯设计视图。
+          {bi(
+            locale,
+            'Runtime heat disabled. Set Runtime URL in Settings to enable.',
+            '未配置 Runtime URL，当前为纯设计视图。',
+          )}
         </p>
       )}
 

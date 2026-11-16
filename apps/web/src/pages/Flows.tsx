@@ -89,7 +89,7 @@ export function FlowsPage() {
       return [];
     }
     const findingsByFlow = new Map<string, FindingsSummary>();
-    for (const finding of collectFindings(data)) {
+    for (const finding of collectFindings(data, locale)) {
       if (!finding.flowId) {
         continue;
       }
@@ -105,11 +105,12 @@ export function FlowsPage() {
         runtimeMetric: runtimeFlowMetrics[flow.id],
         runtimeEnabled: !!runtimeBaseUrl,
         runtimeAvailable,
+        locale,
       });
       return {
         id: flow.id,
         name: locale === 'zh' ? flow.name_zh : flow.name_en,
-        owner: getServiceDisplay(flow.owner_service, indexes.mapServices),
+        owner: getServiceDisplay(flow.owner_service, indexes.mapServices, locale),
         score: checklist.score,
         mode: checklist.mode,
         checklistSummary: `${checklist.achievedWeight}/${checklist.maxWeight}`,
@@ -158,46 +159,59 @@ export function FlowsPage() {
 
   return (
     <section className="page">
-      <h1>Flows / 流程</h1>
+      <h1>{bi(locale, 'Flows', '流程')}</h1>
 
-      {loading && <p>Loading flows... / 正在加载流程...</p>}
-      {error && <p className="error">Failed to load flows / 加载流程失败: {error}</p>}
+      {loading && <p>{bi(locale, 'Loading flows...', '正在加载流程...')}</p>}
+      {error && (
+        <p className="error">
+          {bi(locale, 'Failed to load flows: ', '加载流程失败:')}{error}
+        </p>
+      )}
 
       {!loading && !error && (
         <>
           <div className="table-lens-toolbar">
-            <label htmlFor="flow-search">Search / 搜索流程</label>
+            <label htmlFor="flow-search">{bi(locale, 'Search flows', '搜索流程')}</label>
             <input
               id="flow-search"
               type="text"
               value={keyword}
-              placeholder="FLOW-XXX / mint"
+              placeholder={bi(locale, 'FLOW-XXX or name', 'FLOW-XXX 或名称')}
               onChange={(event) => setKeyword(event.target.value)}
             />
-            <label htmlFor="flow-sort">Sort / 排序</label>
+            <label htmlFor="flow-sort">{bi(locale, 'Sort', '排序')}</label>
             <select
               id="flow-sort"
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value as 'score_desc' | 'score_asc' | 'id_asc')}
             >
-              <option value="score_desc">Score high → low</option>
-              <option value="score_asc">Score low → high</option>
-              <option value="id_asc">Flow ID A → Z</option>
+              <option value="score_desc">{bi(locale, 'Score high → low', '分数 高→低')}</option>
+              <option value="score_asc">{bi(locale, 'Score low → high', '分数 低→高')}</option>
+              <option value="id_asc">{bi(locale, 'Flow ID A → Z', '流程 ID A→Z')}</option>
             </select>
-            {activeFilter && <span className="state-badge state-badge-planned">filter: {activeFilter}</span>}
+            {activeFilter && (
+              <span className="state-badge state-badge-planned">
+                {bi(locale, 'filter', '过滤')}: {activeFilter}
+              </span>
+            )}
             <span className="subtle">
-              visible: {filteredRows.length} / {rows.length}
+              {bi(locale, 'visible', '可见')}: {filteredRows.length}/{rows.length}
             </span>
-            {activeFilter && <Link to="/flows">Clear Filter / 清除过滤</Link>}
+            {activeFilter && (
+              <Link to="/flows">{bi(locale, 'Clear Filter', '清除过滤')}</Link>
+            )}
           </div>
 
           {runtimeBaseUrl && runtimeLoading && (
-            <p className="subtle">Loading runtime overlay... / 正在加载运行态叠加...</p>
+            <p className="subtle">
+              {bi(locale, 'Loading runtime overlay...', '正在加载运行态叠加...')}
+            </p>
           )}
           {runtimeBaseUrl && runtimeError && (
             <p className="error">
-              Runtime overlay warning: {runtimeError}
-              {' '}（score 已自动退化为 design-only）
+              {bi(locale, 'Runtime overlay warning: ', '运行态叠加警告:')}{runtimeError}
+              {' '}
+              {bi(locale, '(score automatically degraded to design-only)', '(score 已自动退化为 design-only)')}
             </p>
           )}
 

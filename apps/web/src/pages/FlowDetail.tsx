@@ -101,8 +101,9 @@ export function FlowDetailPage() {
         showReads: showFlowMapReads,
         showTables: showFlowMapTables,
         schemasOnly: showFlowMapSchemasOnly,
+        locale,
       }),
-    [data, flowId, showFlowMapReads, showFlowMapSchemasOnly, showFlowMapTables],
+    [data, flowId, locale, showFlowMapReads, showFlowMapSchemasOnly, showFlowMapTables],
   );
   const flowImpactResult = useMemo(
     () =>
@@ -110,8 +111,9 @@ export function FlowDetailPage() {
         maxTables: 25,
         groupBySchema: impactGroupBySchema,
         maxTablesPerSchema: 12,
+        locale,
       }),
-    [data, flowId, impactGroupBySchema],
+    [data, flowId, impactGroupBySchema, locale],
   );
 
   useEffect(() => {
@@ -262,8 +264,8 @@ export function FlowDetailPage() {
   if (loading) {
     return (
       <section className="page">
-        <h1>Flow Detail / 流程详情</h1>
-        <p>Loading flow detail... / 正在加载流程详情...</p>
+        <h1>{bi(locale, 'Flow Detail', '流程详情')}</h1>
+        <p>{bi(locale, 'Loading flow detail...', '正在加载流程详情...')}</p>
       </section>
     );
   }
@@ -271,8 +273,10 @@ export function FlowDetailPage() {
   if (error) {
     return (
       <section className="page">
-        <h1>Flow Detail / 流程详情</h1>
-        <p className="error">Failed to load flow detail / 加载流程详情失败: {error}</p>
+        <h1>{bi(locale, 'Flow Detail', '流程详情')}</h1>
+        <p className="error">
+          {bi(locale, 'Failed to load flow detail: ', '加载流程详情失败:')}{error}
+        </p>
       </section>
     );
   }
@@ -281,19 +285,23 @@ export function FlowDetailPage() {
   if (!flow || !data) {
     return (
       <section className="page">
-        <h1>Flow Detail / 流程详情</h1>
-        <p>Flow not found / 未找到流程: <code>{flowId}</code></p>
-        <p><Link to="/flows">Back to Flows / 返回流程列表</Link></p>
+        <h1>{bi(locale, 'Flow Detail', '流程详情')}</h1>
+        <p>
+          {bi(locale, 'Flow not found', '未找到流程')}: <code>{flowId}</code>
+        </p>
+        <p>
+          <Link to="/flows">{bi(locale, 'Back to Flows', '返回流程列表')}</Link>
+        </p>
       </section>
     );
   }
 
   const edges = data.crudEdges.filter((edge) => edge.flow_id === flow.id);
   // 发现(本流程):issues 立案 + notes QC 标记 + 治理规则命中,统一聚合
-  const flowFindings = collectFindings(data)
+  const flowFindings = collectFindings(data, locale)
     .filter((finding) => finding.flowId === flow.id);
   const mermaid = data.diagrams.flow_mermaid[flow.id] ?? '';
-  const ownerLabel = getServiceDisplay(flow.owner_service, indexes.mapServices);
+  const ownerLabel = getServiceDisplay(flow.owner_service, indexes.mapServices, locale);
   const runtimeColumns = collectRuntimeColumns(runtimeRows);
   const relatedReads = Array.from(
     new Set(flow.reads.map((tableName) => indexes.canonicalTableName(tableName))),
@@ -313,26 +321,30 @@ export function FlowDetailPage() {
     runtimeMetric: runtimeMetrics,
     runtimeEnabled: !!runtimeBaseUrl,
     runtimeAvailable: !!runtimeBaseUrl && !runtimeError,
+    locale,
   });
 
   return (
     <section className="page">
-      <h1>Flow Detail / 流程详情</h1>
+      <h1>{bi(locale, 'Flow Detail', '流程详情')}</h1>
       {diffHint && (
         <p className="subtle">
-          Diff hint: this flow changed between selected history versions.
-          {' '} / Diff 提示：该流程在选定版本之间发生变更。
+          {bi(
+            locale,
+            'Diff hint: this flow changed between selected history versions.',
+            'Diff 提示：该流程在选定版本之间发生变更。',
+          )}
         </p>
       )}
       <p>
-        <Link to="/flows">Back to Flows / 返回流程列表</Link>
+        <Link to="/flows">{bi(locale, 'Back to Flows', '返回流程列表')}</Link>
         {' | '}
         <button
           type="button"
           className="inline-link-btn"
           onClick={() => diagramAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
         >
-          Jump to Diagram / 跳到图
+          {bi(locale, 'Jump to Diagram', '跳到图')}
         </button>
       </p>
 
@@ -389,12 +401,12 @@ export function FlowDetailPage() {
         </article>
 
         <article className="card">
-          <h2>Reads / 读取</h2>
+          <h2>{bi(locale, 'Reads', '读取')}</h2>
           <ul className="inline-list">
             {flow.reads.length > 0 ? flow.reads.map((name) => <li key={name}><code>{name}</code></li>) : <li>-</li>}
           </ul>
 
-          <h2>Writes / 写入</h2>
+          <h2>{bi(locale, 'Writes', '写入')}</h2>
           <ul className="inline-list">
             {flow.writes.length > 0
               ? flow.writes.map((write, idx) => (
@@ -405,7 +417,7 @@ export function FlowDetailPage() {
               : <li>-</li>}
           </ul>
 
-          <h2>Events / 事件</h2>
+          <h2>{bi(locale, 'Events', '事件')}</h2>
           <ul className="inline-list">
             {flow.events_appended.length > 0
               ? flow.events_appended.map((eventName) => <li key={eventName}><code>{eventName}</code></li>)
@@ -414,7 +426,7 @@ export function FlowDetailPage() {
         </article>
 
         <article className="card">
-          <h2>CRUD Edges / CRUD 边</h2>
+          <h2>{bi(locale, 'CRUD Edges', 'CRUD 边')}</h2>
           <ul className="inline-list">
             {edges.length > 0
               ? edges.map((edge) => (
@@ -427,9 +439,9 @@ export function FlowDetailPage() {
         </article>
 
         <article className="card">
-          <h2>Delivery Checklist / 交付清单</h2>
+          <h2>{bi(locale, 'Delivery Checklist', '交付清单')}</h2>
           <p>
-            score:{' '}
+            {bi(locale, 'score', '评分')}:{' '}
             <span
               className={`delivery-score-badge ${
                 deliveryChecklist.score < 60
@@ -441,7 +453,7 @@ export function FlowDetailPage() {
             >
               {deliveryChecklist.score}
             </span>
-            {' '}mode: {deliveryChecklist.mode}
+            {' '}{bi(locale, 'mode', '模式')}: {deliveryChecklist.mode}
             {' '}({deliveryChecklist.achievedWeight}/{deliveryChecklist.maxWeight})
           </p>
           <ul className="delivery-checklist-list">
@@ -454,11 +466,15 @@ export function FlowDetailPage() {
             ))}
           </ul>
           <p className="subtle">
-            Runtime disabled/unavailable will mark runtime evidence as unknown, keeping score design-focused.
+            {bi(
+              locale,
+              'Runtime disabled/unavailable will mark runtime evidence as unknown, keeping score design-focused.',
+              '运行态关闭或不可用时,运行证据按 unknown 计,评分保持设计期口径。',
+            )}
           </p>
           {deliveryChecklist.suggestions.length > 0 && (
             <>
-              <h3>Fix Suggestions / 修复建议</h3>
+              <h3>{bi(locale, 'Fix Suggestions', '修复建议')}</h3>
               <ul className="inline-list">
                 {deliveryChecklist.suggestions.map((tip) => (
                   <li key={`tip-${tip}`}>{tip}</li>
@@ -469,36 +485,46 @@ export function FlowDetailPage() {
         </article>
 
         <article className="card">
-          <h2>Runtime Recent / 运行态最近记录</h2>
+          <h2>{bi(locale, 'Runtime Recent', '运行态最近记录')}</h2>
           {!runtimeBaseUrl && (
             <p>
-              Set runtime url to enable / 请先在 <Link to="/settings">Settings / 设置</Link> 中填写 Runtime URL。
+              {bi(locale, 'Set runtime url in', '请先在')}{' '}
+              <Link to="/settings">{bi(locale, 'Settings', '设置')}</Link>
+              {' '}{bi(locale, 'to enable.', '中填写 Runtime URL。')}
             </p>
           )}
           {runtimeBaseUrl && (
             <>
               <p className="subtle">
-                Source: <code>{runtimeBaseUrl}{runtimeFlowRecentPath(flow.id, data)}?limit=200</code>
+                {bi(locale, 'Source', '来源')}: <code>{runtimeBaseUrl}{runtimeFlowRecentPath(flow.id, data)}?limit=200</code>
               </p>
               <p>
-                success: {runtimeMetrics.success}
+                {bi(locale, 'success', '成功')}: {runtimeMetrics.success}
                 {' · '}
-                pending: {runtimeMetrics.pending}
+                {bi(locale, 'pending', '待处理')}: {runtimeMetrics.pending}
                 {' · '}
-                failed: {runtimeMetrics.failed}
+                {bi(locale, 'failed', '失败')}: {runtimeMetrics.failed}
                 {' · '}
-                heat: {runtimeMetrics.heat}
+                {bi(locale, 'heat', '热度')}: {runtimeMetrics.heat}
                 {runtimeMetrics.unknown > 0 && (
                   <>
                     {' · '}
-                    unknown: {runtimeMetrics.unknown}
+                    {bi(locale, 'unknown', '未知')}: {runtimeMetrics.unknown}
                   </>
                 )}
               </p>
-              {runtimeLoading && <p>Loading runtime records... / 正在加载运行态记录...</p>}
-              {runtimeError && <p className="error">Runtime error: {runtimeError}</p>}
+              {runtimeLoading && (
+                <p>{bi(locale, 'Loading runtime records...', '正在加载运行态记录...')}</p>
+              )}
+              {runtimeError && (
+                <p className="error">
+                  {bi(locale, 'Runtime error: ', '运行态错误:')}{runtimeError}
+                </p>
+              )}
               {!runtimeLoading && !runtimeError && runtimeRows.length === 0 && (
-                <p className="subtle">No runtime records returned / 当前没有返回记录。</p>
+                <p className="subtle">
+                  {bi(locale, 'No runtime records returned.', '当前没有返回记录。')}
+                </p>
               )}
               {!runtimeLoading && !runtimeError && runtimeRows.length > 0 && (
                 <div className="runtime-table-wrap">
@@ -529,14 +555,14 @@ export function FlowDetailPage() {
         </article>
 
         <article className="card">
-          <h2>Related Tables / 相关表</h2>
+          <h2>{bi(locale, 'Related Tables', '相关表')}</h2>
           <p>
             <Link to={`/crud?flow=${encodeURIComponent(flow.id)}`}>
-              Highlight in CRUD / 在 CRUD 高亮
+              {bi(locale, 'Highlight in CRUD', '在 CRUD 高亮')}
             </Link>
           </p>
 
-          <h3>Reads / 读取</h3>
+          <h3>{bi(locale, 'Reads', '读取')}</h3>
           <ul className="inline-list">
             {relatedReads.length > 0
               ? relatedReads.map((tableName) => (
@@ -553,7 +579,7 @@ export function FlowDetailPage() {
               : <li>-</li>}
           </ul>
 
-          <h3>Writes / 写入</h3>
+          <h3>{bi(locale, 'Writes', '写入')}</h3>
           <ul className="inline-list">
             {relatedWrites.length > 0
               ? relatedWrites.map(([tableName, ops]) => (
@@ -565,7 +591,7 @@ export function FlowDetailPage() {
                     >
                       {tableName}
                     </Link>
-                    {' '}- ops: {ops || '-'}
+                    {' '}- {bi(locale, 'ops', '操作')}: {ops || '-'}
                   </li>
                 ))
               : <li>-</li>}
@@ -578,23 +604,27 @@ export function FlowDetailPage() {
             flowMapCardRef.current = el;
           }}
         >
-          <h2>Flow Map / 业务链路地图（L1）</h2>
+          <h2>{bi(locale, 'Flow Map', '业务链路地图（L1）')}</h2>
           <p className="subtle">
-            Generated from index.json only. / 仅基于 index.json 自动生成。
+            {bi(
+              locale,
+              'Generated from index.json only.',
+              '仅基于 index.json 自动生成。',
+            )}
           </p>
           <div className="diagram-toolbar">
             <button type="button" className="crud-btn" onClick={() => flowMapRef.current?.fit()}>
-              Fit / 适配
+              {bi(locale, 'Fit', '适配')}
             </button>
             <button type="button" className="crud-btn" onClick={() => flowMapRef.current?.reset()}>
-              Reset / 重置
+              {bi(locale, 'Reset', '重置')}
             </button>
             <button
               type="button"
               className="crud-btn"
               onClick={() => flowMapRef.current?.exportSvg(`flow-${flow.id}-map.svg`)}
             >
-              Export SVG / 导出 SVG
+              {bi(locale, 'Export SVG', '导出 SVG')}
             </button>
             <label className="l0-toggle">
               <input
@@ -602,7 +632,7 @@ export function FlowDetailPage() {
                 checked={showFlowMapReads}
                 onChange={(event) => setShowFlowMapReads(event.target.checked)}
               />
-              Show reads / 显示读取
+              {bi(locale, 'Show reads', '显示读取')}
             </label>
             <label className="l0-toggle">
               <input
@@ -610,7 +640,7 @@ export function FlowDetailPage() {
                 checked={showFlowMapTables}
                 onChange={(event) => setShowFlowMapTables(event.target.checked)}
               />
-              Show tables / 显示表明细
+              {bi(locale, 'Show tables', '显示表明细')}
             </label>
             <label className="l0-toggle">
               <input
@@ -618,7 +648,7 @@ export function FlowDetailPage() {
                 checked={showFlowMapSchemasOnly}
                 onChange={(event) => setShowFlowMapSchemasOnly(event.target.checked)}
               />
-              Schemas only / 仅显示 schema
+              {bi(locale, 'Schemas only', '仅显示 schema')}
             </label>
             <span className="diagram-status">
               {flowMapRenderState === 'rendered'
@@ -644,7 +674,9 @@ export function FlowDetailPage() {
                 void toggleFlowMapFullscreen();
               }}
             >
-              {isFlowMapFullscreen ? 'Exit Fullscreen / 退出全屏' : 'Fullscreen / 全屏'}
+              {isFlowMapFullscreen
+                ? bi(locale, 'Exit Fullscreen', '退出全屏')
+                : bi(locale, 'Fullscreen', '全屏')}
             </button>
           </div>
         </article>
@@ -655,31 +687,33 @@ export function FlowDetailPage() {
             flowImpactCardRef.current = el;
           }}
         >
-          <h2>Impact Graph / 影响面图（L2）</h2>
+          <h2>{bi(locale, 'Impact Graph', '影响面图（L2）')}</h2>
           <p className="subtle">
-            Flow-centered network of related tables.
-            {' '}
-            节点过多时会折叠，建议配合 CRUD 过滤深入查看。
+            {bi(
+              locale,
+              'Flow-centered network of related tables.',
+              '以流程为中心的相关表网络。节点过多时会折叠，建议配合 CRUD 过滤深入查看。',
+            )}
           </p>
           <div className="diagram-toolbar">
             <button type="button" className="crud-btn" onClick={() => flowImpactRef.current?.fit()}>
-              Fit / 适配
+              {bi(locale, 'Fit', '适配')}
             </button>
             <button type="button" className="crud-btn" onClick={() => flowImpactRef.current?.reset()}>
-              Reset / 重置
+              {bi(locale, 'Reset', '重置')}
             </button>
             <button
               type="button"
               className="crud-btn"
               onClick={() => flowImpactRef.current?.exportSvg(flowImpactFileName)}
             >
-              Export SVG / 导出 SVG
+              {bi(locale, 'Export SVG', '导出 SVG')}
             </button>
             <Link
               to={`/crud?flow=${encodeURIComponent(flow.id)}`}
               className="crud-btn table-lens-link-btn"
             >
-              Open CRUD filtered / 打开 CRUD 过滤
+              {bi(locale, 'Open CRUD filtered', '打开 CRUD 过滤')}
             </Link>
             <label className="l0-toggle">
               <input
@@ -687,7 +721,7 @@ export function FlowDetailPage() {
                 checked={impactGroupBySchema}
                 onChange={(event) => setImpactGroupBySchema(event.target.checked)}
               />
-              Group by schema / 按 schema 分组
+              {bi(locale, 'Group by schema', '按 schema 分组')}
             </label>
             <span className="diagram-status">
               {flowImpactRenderState === 'rendered'
@@ -699,9 +733,11 @@ export function FlowDetailPage() {
           </div>
           {(flowImpactResult.readCollapsed > 0 || flowImpactResult.writeCollapsed > 0) && (
             <p className="subtle">
-              Collapsed: reads +{flowImpactResult.readCollapsed}, writes +{flowImpactResult.writeCollapsed}
-              {' '}
-              / 已折叠：读取 +{flowImpactResult.readCollapsed}，写入 +{flowImpactResult.writeCollapsed}
+              {bi(
+                locale,
+                `Collapsed: reads +${flowImpactResult.readCollapsed}, writes +${flowImpactResult.writeCollapsed}`,
+                `已折叠：读取 +${flowImpactResult.readCollapsed}，写入 +${flowImpactResult.writeCollapsed}`,
+              )}
             </p>
           )}
           {flowImpactResult.error ? <p className="error">{flowImpactResult.error}</p> : null}
@@ -720,7 +756,9 @@ export function FlowDetailPage() {
                 void toggleFlowImpactFullscreen();
               }}
             >
-              {isFlowImpactFullscreen ? 'Exit Fullscreen / 退出全屏' : 'Fullscreen / 全屏'}
+              {isFlowImpactFullscreen
+                ? bi(locale, 'Exit Fullscreen', '退出全屏')
+                : bi(locale, 'Fullscreen', '全屏')}
             </button>
           </div>
         </article>
@@ -732,20 +770,20 @@ export function FlowDetailPage() {
             diagramCardRef.current = el;
           }}
         >
-          <h2>Sequence Diagram / 时序图</h2>
+          <h2>{bi(locale, 'Sequence Diagram', '时序图')}</h2>
           <div className="diagram-toolbar">
             <button type="button" className="crud-btn" onClick={() => diagramRef.current?.fit()}>
-              Fit / 适配
+              {bi(locale, 'Fit', '适配')}
             </button>
             <button type="button" className="crud-btn" onClick={() => diagramRef.current?.reset()}>
-              Reset / 重置
+              {bi(locale, 'Reset', '重置')}
             </button>
             <button
               type="button"
               className="crud-btn"
               onClick={() => diagramRef.current?.exportSvg(`flow-${flow.id}-sequence.svg`)}
             >
-              Export SVG / 导出 SVG
+              {bi(locale, 'Export SVG', '导出 SVG')}
             </button>
             <span className="diagram-status">
               {renderState === 'rendered' ? 'Rendered ✓' : renderState === 'error' ? 'Error' : 'Rendering...'}
@@ -766,13 +804,15 @@ export function FlowDetailPage() {
                 void toggleDiagramFullscreen();
               }}
             >
-              {isDiagramFullscreen ? 'Exit Fullscreen / 退出全屏' : 'Fullscreen / 全屏'}
+              {isDiagramFullscreen
+                ? bi(locale, 'Exit Fullscreen', '退出全屏')
+                : bi(locale, 'Fullscreen', '全屏')}
             </button>
           </div>
         </article>
 
         <article className="card">
-          <h2>Mermaid Source / Mermaid 源码预览</h2>
+          <h2>{bi(locale, 'Mermaid Source', 'Mermaid 源码预览')}</h2>
           <textarea className="code-preview" readOnly value={mermaid} />
         </article>
       </div>

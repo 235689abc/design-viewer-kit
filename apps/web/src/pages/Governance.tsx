@@ -5,6 +5,7 @@ import {
   type GovernanceIssue,
   type GovernanceSeverity,
 } from '../app/governanceRules';
+import { useLocale, bi } from '../app/i18n';
 import { useProjectData } from '../app/useProjectData';
 
 function issueMatches(issue: GovernanceIssue, keyword: string): boolean {
@@ -32,11 +33,12 @@ function severityClass(severity: GovernanceSeverity): string {
 
 export function GovernancePage() {
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
   const [searchParams] = useSearchParams();
   const [keyword, setKeyword] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | 'violation' | 'warning'>('all');
   const preselectedRule = searchParams.get('rule')?.trim() ?? '';
-  const result = useMemo(() => runGovernanceChecks(data), [data]);
+  const result = useMemo(() => runGovernanceChecks(data, locale), [data, locale]);
 
   const visibleItems = useMemo(() => {
     const lowered = keyword.trim().toLowerCase();
@@ -64,41 +66,45 @@ export function GovernancePage() {
 
   return (
     <section className="page">
-      <h1>Governance / 治理规则</h1>
+      <h1>{bi(locale, 'Governance', '治理规则')}</h1>
       <p className="subtle">
-        Automated policy checks from `/data/index.json`.
+        {bi(locale, 'Automated policy checks from `/data/index.json`.', '基于 `/data/index.json` 的自动化策略检查。')}
       </p>
 
-      {loading && <p>Loading governance checks... / 正在加载治理规则...</p>}
-      {error && <p className="error">Failed to load data / 加载数据失败: {error}</p>}
+      {loading && <p>{bi(locale, 'Loading governance checks...', '正在加载治理规则...')}</p>}
+      {error && (
+        <p className="error">
+          {bi(locale, 'Failed to load data: ', '加载数据失败:')}{error}
+        </p>
+      )}
 
       {!loading && !error && (
         <>
           <div className="card-grid">
             <article className="card">
-              <h2>Summary / 总览</h2>
-              <p>violations: {result.violations.length}</p>
-              <p>warnings: {result.warnings.length}</p>
-              <p>total: {result.all.length}</p>
+              <h2>{bi(locale, 'Summary', '总览')}</h2>
+              <p>{bi(locale, 'violations', '违例')}: {result.violations.length}</p>
+              <p>{bi(locale, 'warnings', '警告')}: {result.warnings.length}</p>
+              <p>{bi(locale, 'total', '合计')}: {result.all.length}</p>
               {preselectedRule && (
                 <p>
-                  rule filter: <code>{preselectedRule}</code>{' '}
-                  <Link to="/governance">Clear / 清除</Link>
+                  {bi(locale, 'rule filter', '规则过滤')}: <code>{preselectedRule}</code>{' '}
+                  <Link to="/governance">{bi(locale, 'Clear', '清除')}</Link>
                 </p>
               )}
             </article>
             <article className="card">
-              <h2>Filter / 过滤</h2>
+              <h2>{bi(locale, 'Filter', '过滤')}</h2>
               <div className="table-lens-toolbar">
-                <label htmlFor="gov-search">Search / 搜索</label>
+                <label htmlFor="gov-search">{bi(locale, 'Search', '搜索')}</label>
                 <input
                   id="gov-search"
                   type="text"
                   value={keyword}
-                  placeholder="flow id / table / rule"
+                  placeholder={bi(locale, 'flow id, table, or rule', '流程 ID/表/规则')}
                   onChange={(event) => setKeyword(event.target.value)}
                 />
-                <label htmlFor="gov-severity">Severity / 严重级别</label>
+                <label htmlFor="gov-severity">{bi(locale, 'Severity', '严重级别')}</label>
                 <select
                   id="gov-severity"
                   value={severityFilter}
@@ -106,20 +112,22 @@ export function GovernancePage() {
                     setSeverityFilter(event.target.value as 'all' | 'violation' | 'warning')
                   }
                 >
-                  <option value="all">All / 全部</option>
-                  <option value="violation">Violation / 严重</option>
-                  <option value="warning">Warning / 警告</option>
+                  <option value="all">{bi(locale, 'All', '全部')}</option>
+                  <option value="violation">{bi(locale, 'Violation', '严重')}</option>
+                  <option value="warning">{bi(locale, 'Warning', '警告')}</option>
                 </select>
               </div>
-              <p className="subtle">visible issues: {visibleItems.length}</p>
+              <p className="subtle">{bi(locale, 'visible issues', '可见问题')}: {visibleItems.length}</p>
             </article>
           </div>
 
           <div className="detail-grid">
             {byRuleVisible.length === 0 && (
               <article className="card">
-                <h2>No Results / 无结果</h2>
-                <p className="subtle">No issues match current filters.</p>
+                <h2>{bi(locale, 'No Results', '无结果')}</h2>
+                <p className="subtle">
+                  {bi(locale, 'No issues match current filters.', '当前过滤条件下没有匹配问题。')}
+                </p>
               </article>
             )}
 
@@ -136,16 +144,16 @@ export function GovernancePage() {
                         <strong>{issue.title}</strong>
                       </p>
                       <p>{issue.message}</p>
-                      <p className="subtle">hint: {issue.hint}</p>
+                      <p className="subtle">{bi(locale, 'hint', '提示')}: {issue.hint}</p>
                       <p className="governance-links">
                         {issue.flowId && (
                           <Link to={`/flows/${encodeURIComponent(issue.flowId)}`}>
-                            Flow / 流程: {issue.flowId}
+                            {bi(locale, 'Flow', '流程')}: {issue.flowId}
                           </Link>
                         )}
                         {issue.table && (
                           <Link to={`/tables/${encodeURIComponent(issue.table)}`}>
-                            Table / 数据表: {issue.table}
+                            {bi(locale, 'Table', '数据表')}: {issue.table}
                           </Link>
                         )}
                         {(issue.table || issue.flowId) && (
@@ -154,7 +162,7 @@ export function GovernancePage() {
                               issue.flowId ?? '',
                             )}`}
                           >
-                            Open CRUD / 打开 CRUD
+                            {bi(locale, 'Open CRUD', '打开 CRUD')}
                           </Link>
                         )}
                       </p>

@@ -1,3 +1,4 @@
+import { dl, type DiagramLocale } from './diagramLabels';
 import { orderedSchemas, schemaDisplayLabel, schemaOf } from './schemaUtils';
 import type { FlowRecord, ProjectData } from './useProjectData';
 
@@ -7,6 +8,7 @@ export type FlowImpactOptions = {
   maxTables?: number;
   groupBySchema?: boolean;
   maxTablesPerSchema?: number;
+  locale?: DiagramLocale;
 };
 
 export type BuildFlowImpactResult = {
@@ -58,8 +60,8 @@ function buildAliasMap(data: ProjectData): Map<string, string> {
   return aliasMap;
 }
 
-function flowLabel(flow: FlowRecord): string {
-  return `${flow.id} | ${flow.name_en} / ${flow.name_zh}`;
+function flowLabel(flow: FlowRecord, locale: DiagramLocale): string {
+  return `${flow.id} | ${locale === 'zh' ? flow.name_zh : flow.name_en}`;
 }
 
 function groupReads(flow: FlowRecord, aliasMap: Map<string, string>, maxTables: number): {
@@ -115,17 +117,18 @@ function appendGroupedReadBranch(
   lines: string[],
   groupedReads: GroupedReads,
   maxTablesPerSchema: number,
+  locale: DiagramLocale,
 ) {
   const schemas = orderedSchemas(groupedReads.keys());
   if (schemas.length === 0) {
-    lines.push('READS --> R_NONE["No reads / 无读取"]');
+    lines.push(`READS --> R_NONE["${dl(locale, 'No reads', '无读取')}"]`);
     lines.push('class R_NONE read;');
     return;
   }
 
   for (const schemaName of schemas) {
     const schemaNode = safeNodeId('RSCHEMA', schemaName);
-    lines.push(`${schemaNode}["${escapeLabel(schemaDisplayLabel(schemaName))}"]`);
+    lines.push(`${schemaNode}["${escapeLabel(schemaDisplayLabel(schemaName, locale))}"]`);
     lines.push(`READS --> ${schemaNode}`);
     lines.push(`class ${schemaNode} read;`);
 
@@ -140,7 +143,7 @@ function appendGroupedReadBranch(
     }
     if (collapsed > 0) {
       const moreNode = safeNodeId('R_MORE', `${schemaName}_${collapsed}`);
-      lines.push(`${moreNode}["+${collapsed} more / 其余${collapsed}"]`);
+      lines.push(`${moreNode}["${dl(locale, `+${collapsed} more`, `其余${collapsed}`)}"]`);
       lines.push(`${schemaNode} --> ${moreNode}`);
       lines.push(`class ${moreNode} read;`);
     }
@@ -151,17 +154,18 @@ function appendGroupedWriteBranch(
   lines: string[],
   groupedWrites: GroupedWrites,
   maxTablesPerSchema: number,
+  locale: DiagramLocale,
 ) {
   const schemas = orderedSchemas(groupedWrites.keys());
   if (schemas.length === 0) {
-    lines.push('WRITES --> W_NONE["No writes / 无写入"]');
+    lines.push(`WRITES --> W_NONE["${dl(locale, 'No writes', '无写入')}"]`);
     lines.push('class W_NONE write;');
     return;
   }
 
   for (const schemaName of schemas) {
     const schemaNode = safeNodeId('WSCHEMA', schemaName);
-    lines.push(`${schemaNode}["${escapeLabel(schemaDisplayLabel(schemaName))}"]`);
+    lines.push(`${schemaNode}["${escapeLabel(schemaDisplayLabel(schemaName, locale))}"]`);
     lines.push(`WRITES --> ${schemaNode}`);
     lines.push(`class ${schemaNode} write;`);
 
@@ -176,19 +180,19 @@ function appendGroupedWriteBranch(
     }
     if (collapsed > 0) {
       const moreNode = safeNodeId('W_MORE', `${schemaName}_${collapsed}`);
-      lines.push(`${moreNode}["+${collapsed} more / 其余${collapsed}"]`);
+      lines.push(`${moreNode}["${dl(locale, `+${collapsed} more`, `其余${collapsed}`)}"]`);
       lines.push(`${schemaNode} --> ${moreNode}`);
       lines.push(`class ${moreNode} write;`);
     }
   }
 }
 
-function appendFlatReadBranch(lines: string[], groupedReads: GroupedReads) {
+function appendFlatReadBranch(lines: string[], groupedReads: GroupedReads, locale: DiagramLocale) {
   const tables = Array.from(groupedReads.values())
     .flatMap((rows) => rows)
     .sort((a, b) => a.localeCompare(b));
   if (tables.length === 0) {
-    lines.push('READS --> R_NONE["No reads / 无读取"]');
+    lines.push(`READS --> R_NONE["${dl(locale, 'No reads', '无读取')}"]`);
     lines.push('class R_NONE read;');
     return;
   }
@@ -200,12 +204,12 @@ function appendFlatReadBranch(lines: string[], groupedReads: GroupedReads) {
   }
 }
 
-function appendFlatWriteBranch(lines: string[], groupedWrites: GroupedWrites) {
+function appendFlatWriteBranch(lines: string[], groupedWrites: GroupedWrites, locale: DiagramLocale) {
   const tables = Array.from(groupedWrites.values())
     .flatMap((rows) => rows)
     .sort((a, b) => a.table.localeCompare(b.table));
   if (tables.length === 0) {
-    lines.push('WRITES --> W_NONE["No writes / 无写入"]');
+    lines.push(`WRITES --> W_NONE["${dl(locale, 'No writes', '无写入')}"]`);
     lines.push('class W_NONE write;');
     return;
   }
@@ -231,13 +235,14 @@ export function buildFlowImpactMermaid(
   flowId: string,
   options: FlowImpactOptions = {},
 ): BuildFlowImpactResult {
+  const locale = options.locale ?? 'zh';
   if (!data) {
-    return errorResult('Project data not loaded / 项目数据尚未加载');
+    return errorResult(dl(locale, 'Project data not loaded', '项目数据尚未加载'));
   }
 
   const flow = data.flows.find((item) => item.id === flowId);
   if (!flow) {
-    return errorResult(`Flow not found: ${flowId} / 未找到流程`);
+    return errorResult(dl(locale, `Flow not found: ${flowId}`, `未找到流程:${flowId}`));
   }
 
   const maxTables = Math.max(1, options.maxTables ?? 25);
@@ -253,9 +258,9 @@ export function buildFlowImpactMermaid(
   lines.push('classDef center fill:#f8fafc,stroke:#64748b,color:#0f172a;');
   lines.push('classDef read fill:#eef3ff,stroke:#3563d9,color:#0f172a;');
   lines.push('classDef write fill:#eaf7ee,stroke:#2f855a,color:#0f172a;');
-  lines.push(`FLOW["${escapeLabel(flowLabel(flow))}"]`);
-  lines.push('READS["Reads / 读取"]');
-  lines.push('WRITES["Writes / 写入"]');
+  lines.push(`FLOW["${escapeLabel(flowLabel(flow, locale))}"]`);
+  lines.push(`READS["${dl(locale, 'Reads', '读取')}"]`);
+  lines.push(`WRITES["${dl(locale, 'Writes', '写入')}"]`);
   lines.push('READS --> FLOW');
   lines.push('FLOW --> WRITES');
   lines.push('class FLOW center;');
@@ -263,19 +268,31 @@ export function buildFlowImpactMermaid(
   lines.push('class WRITES write;');
 
   if (groupBySchema) {
-    appendGroupedReadBranch(lines, readPart.grouped, maxTablesPerSchema);
-    appendGroupedWriteBranch(lines, writePart.grouped, maxTablesPerSchema);
+    appendGroupedReadBranch(lines, readPart.grouped, maxTablesPerSchema, locale);
+    appendGroupedWriteBranch(lines, writePart.grouped, maxTablesPerSchema, locale);
   } else {
-    appendFlatReadBranch(lines, readPart.grouped);
-    appendFlatWriteBranch(lines, writePart.grouped);
+    appendFlatReadBranch(lines, readPart.grouped, locale);
+    appendFlatWriteBranch(lines, writePart.grouped, locale);
   }
 
   if (readPart.collapsed > 0) {
-    lines.push(`READS --> R_COLLAPSED["+${readPart.collapsed} more reads / 其余${readPart.collapsed}读取"]`);
+    lines.push(
+      `READS --> R_COLLAPSED["${dl(
+        locale,
+        `+${readPart.collapsed} more reads`,
+        `其余${readPart.collapsed}读取`,
+      )}"]`,
+    );
     lines.push('class R_COLLAPSED read;');
   }
   if (writePart.collapsed > 0) {
-    lines.push(`WRITES --> W_COLLAPSED["+${writePart.collapsed} more writes / 其余${writePart.collapsed}写入"]`);
+    lines.push(
+      `WRITES --> W_COLLAPSED["${dl(
+        locale,
+        `+${writePart.collapsed} more writes`,
+        `其余${writePart.collapsed}写入`,
+      )}"]`,
+    );
     lines.push('class W_COLLAPSED write;');
   }
 

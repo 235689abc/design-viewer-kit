@@ -38,7 +38,7 @@ export function TablesPage() {
 
   const findingsByTable = useMemo(() => {
     const map = new Map<string, Finding[]>();
-    for (const finding of collectFindings(data)) {
+    for (const finding of collectFindings(data, locale)) {
       if (!finding.table) {
         continue;
       }
@@ -47,7 +47,7 @@ export function TablesPage() {
       map.set(finding.table, list);
     }
     return map;
-  }, [data]);
+  }, [data, locale]);
 
   const filteredTables = useMemo(() => {
     const items = data?.tables ?? [];
@@ -73,21 +73,27 @@ export function TablesPage() {
 
   return (
     <section className="page">
-      <h1>Tables / 数据表</h1>
-      <p className="subtle">Table Lens list with governance fields and quick lookup.</p>
+      <h1>{bi(locale, 'Tables', '数据表')}</h1>
+      <p className="subtle">
+        {bi(
+          locale,
+          'Table Lens list with governance fields and quick lookup.',
+          'Table Lens 列表:含治理字段与快速检索。',
+        )}
+      </p>
 
-      {loading && <p>Loading tables... / 正在加载数据表...</p>}
+      {loading && <p>{bi(locale, 'Loading tables...', '正在加载数据表...')}</p>}
 
       {error && (
         <p className="error">
-          Failed to load tables / 加载数据表失败: {error}
+          {bi(locale, 'Failed to load tables: ', '加载数据表失败:')}{error}
         </p>
       )}
 
       {!loading && !error && (
         <div className="table-lens-list">
           <div className="table-lens-toolbar">
-            <label htmlFor="table-name-filter">Search / 搜索表名</label>
+            <label htmlFor="table-name-filter">{bi(locale, 'Search table name', '搜索表名')}</label>
             <input
               id="table-name-filter"
               type="text"
@@ -95,11 +101,17 @@ export function TablesPage() {
               placeholder="orders"
               onChange={(e) => setNameFilter(e.target.value)}
             />
-            {activeFilter && <span className="state-badge state-badge-planned">filter: {activeFilter}</span>}
+            {activeFilter && (
+              <span className="state-badge state-badge-planned">
+                {bi(locale, 'filter', '过滤')}: {activeFilter}
+              </span>
+            )}
             <span className="subtle">
-              visible: {filteredTables.length} / {data?.tables.length ?? 0}
+              {bi(locale, 'visible', '可见')}: {filteredTables.length}/{data?.tables.length ?? 0}
             </span>
-            {activeFilter && <Link to="/tables">Clear Filter / 清除过滤</Link>}
+            {activeFilter && (
+              <Link to="/tables">{bi(locale, 'Clear Filter', '清除过滤')}</Link>
+            )}
           </div>
 
           <table className="table-lens-grid">
@@ -133,7 +145,7 @@ export function TablesPage() {
                         {table.state || '-'}
                       </span>
                     </td>
-                    <td>{getServiceDisplay(table.owner_service, indexes.mapServices)}</td>
+                    <td>{getServiceDisplay(table.owner_service, indexes.mapServices, locale)}</td>
                     <td><code>{table.introduced_in || '-'}</code></td>
                     <td>{table.alias_of ? `alias -> ${table.alias_of}` : '-'}</td>
                     <td>

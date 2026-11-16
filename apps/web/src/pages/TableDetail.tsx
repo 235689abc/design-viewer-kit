@@ -11,6 +11,7 @@ import { getRuntimeBaseUrl, subscribeRuntimeBaseUrl } from '../app/runtimeClient
 import { loadRuntimeOverlay } from '../app/runtimeMetrics';
 import { collectFindings } from '../app/findings';
 import { useLocale, bi } from '../app/i18n';
+import type { DiagramLocale } from '../app/diagramLabels';
 import { type FlowRecord, useProjectData } from '../app/useProjectData';
 import {
   MermaidPanZoom,
@@ -43,6 +44,7 @@ function getRelatedFlowGroups(
   edgesForTable: Array<{ flow_id: string; ops: string }>,
   flowById: Map<string, FlowRecord>,
   serviceMap: Map<string, { name_en: string; name_zh: string }>,
+  locale: DiagramLocale,
 ): { writes: RelatedFlowItem[]; reads: RelatedFlowItem[] } {
   const related: RelatedFlowItem[] = [];
   const mergedOpsByFlow = new Map<string, string>();
@@ -60,7 +62,7 @@ function getRelatedFlowGroups(
     related.push({
       flow,
       ops,
-      ownerLabel: getServiceDisplay(flow.owner_service, serviceMap),
+      ownerLabel: getServiceDisplay(flow.owner_service, serviceMap, locale),
       focused: focusedFlowId.length > 0 && flow.id === focusedFlowId,
     });
   }
@@ -77,6 +79,7 @@ function renderFlowList(
   title: string,
   list: RelatedFlowItem[],
   tableName: string,
+  locale: DiagramLocale,
 ) {
   return (
     <article className="card">
@@ -91,18 +94,21 @@ function renderFlowList(
             <p>
               <Link to={`/flows/${encodeURIComponent(item.flow.id)}`}>{item.flow.id}</Link>
               {' · '}
-              <span>{item.flow.name_en} / {item.flow.name_zh}</span>
+              <span>{locale === 'zh' ? item.flow.name_zh : item.flow.name_en}</span>
             </p>
-            <p><strong>ops:</strong> {item.ops}</p>
-            <p><strong>owner:</strong> {item.ownerLabel}</p>
-            <p><strong>introduced:</strong> <code>{item.flow.introduced_in || '-'}</code></p>
+            <p><strong>{bi(locale, 'ops', '操作')}:</strong> {item.ops}</p>
+            <p><strong>{bi(locale, 'owner', '归属')}:</strong> {item.ownerLabel}</p>
+            <p>
+              <strong>{bi(locale, 'introduced', '引入')}:</strong>{' '}
+              <code>{item.flow.introduced_in || '-'}</code>
+            </p>
             <p>
               <Link
                 to={`/crud?table=${encodeURIComponent(tableName)}&flow=${encodeURIComponent(
                   item.flow.id,
                 )}`}
               >
-                Highlight in CRUD / 在 CRUD 高亮
+                {bi(locale, 'Highlight in CRUD', '在 CRUD 高亮')}
               </Link>
             </p>
           </li>
@@ -133,8 +139,9 @@ export function TableDetailPage() {
         maxWriteFlows: 15,
         maxReadFlows: 15,
         focusedFlowId,
+        locale,
       }),
-    [data, focusedFlowId, tableName],
+    [data, focusedFlowId, locale, tableName],
   );
 
   useEffect(() => {
@@ -220,8 +227,8 @@ export function TableDetailPage() {
   if (loading) {
     return (
       <section className="page">
-        <h1>Table Detail / 表详情</h1>
-        <p>Loading table detail... / 正在加载数据表详情...</p>
+        <h1>{bi(locale, 'Table Detail', '表详情')}</h1>
+        <p>{bi(locale, 'Loading table detail...', '正在加载数据表详情...')}</p>
       </section>
     );
   }
@@ -229,8 +236,10 @@ export function TableDetailPage() {
   if (error) {
     return (
       <section className="page">
-        <h1>Table Detail / 表详情</h1>
-        <p className="error">Failed to load table detail / 加载数据表详情失败: {error}</p>
+        <h1>{bi(locale, 'Table Detail', '表详情')}</h1>
+        <p className="error">
+          {bi(locale, 'Failed to load table detail: ', '加载数据表详情失败:')}{error}
+        </p>
       </section>
     );
   }
@@ -239,39 +248,47 @@ export function TableDetailPage() {
   if (!table || !data) {
     return (
       <section className="page">
-        <h1>Table Detail / 表详情</h1>
-        <p>Table not found / 未找到数据表: <code>{tableName}</code></p>
-        <p><Link to="/tables">Back to Tables / 返回数据表列表</Link></p>
+        <h1>{bi(locale, 'Table Detail', '表详情')}</h1>
+        <p>
+          {bi(locale, 'Table not found', '未找到数据表')}: <code>{tableName}</code>
+        </p>
+        <p>
+          <Link to="/tables">{bi(locale, 'Back to Tables', '返回数据表列表')}</Link>
+        </p>
       </section>
     );
   }
 
   const canonicalName = canonicalNameForHeat;
-  const ownerLabel = getServiceDisplay(table.owner_service, indexes.mapServices);
+  const ownerLabel = getServiceDisplay(table.owner_service, indexes.mapServices, locale);
   const edgesForTable = indexes.edgesByTable.get(canonicalName) ?? [];
   const groups = getRelatedFlowGroups(
     focusedFlowId,
     edgesForTable,
     indexes.flowById,
     indexes.mapServices,
+    locale,
   );
   const impactFileName = `table-${canonicalName.replace(/[^A-Za-z0-9_]+/g, '_')}-impact.svg`;
   // 发现(本表):issues 立案 + notes QC 标记 + 治理规则命中,统一聚合
-  const tableFindings = collectFindings(data).filter((finding) => finding.table === table.name);
+  const tableFindings = collectFindings(data, locale).filter((finding) => finding.table === table.name);
   const crudFocusLink = focusedFlowId
     ? `/crud?table=${encodeURIComponent(canonicalName)}&flow=${encodeURIComponent(focusedFlowId)}`
     : `/crud?table=${encodeURIComponent(canonicalName)}`;
 
   return (
     <section className="page">
-      <h1>Table Detail / 表详情</h1>
+      <h1>{bi(locale, 'Table Detail', '表详情')}</h1>
       {runtimeBaseUrl && runtimeWarning && (
         <p className="error">
-          Runtime overlay warning: {runtimeWarning}
-          {' '}（不可用时自动降级 design-only）
+          {bi(locale, 'Runtime overlay warning: ', '运行态叠加警告:')}{runtimeWarning}
+          {' '}
+          {bi(locale, '(unavailable runtime degrades to design-only)', '(不可用时自动降级 design-only)')}
         </p>
       )}
-      <p><Link to="/tables">Back to Tables / 返回数据表列表</Link></p>
+      <p>
+        <Link to="/tables">{bi(locale, 'Back to Tables', '返回数据表列表')}</Link>
+      </p>
 
       <div className="detail-grid">
         <article className="card">
@@ -360,7 +377,7 @@ export function TableDetailPage() {
 
         {focusedFlowId && (
           <article className="card">
-            <h2>Focused Flow / 当前聚焦流程</h2>
+            <h2>{bi(locale, 'Focused Flow', '当前聚焦流程')}</h2>
             <p><code>{focusedFlowId}</code></p>
           </article>
         )}
@@ -371,28 +388,30 @@ export function TableDetailPage() {
             impactCardRef.current = el;
           }}
         >
-          <h2>Impact Graph / 影响面图（L2）</h2>
+          <h2>{bi(locale, 'Impact Graph', '影响面图（L2）')}</h2>
           <p className="subtle">
-            Writes are upstream and reads are downstream.
-            {' '}
-            节点过多时会折叠，建议配合 CRUD 过滤深入查看。
+            {bi(
+              locale,
+              'Writes are upstream and reads are downstream.',
+              '写入在上游、读取在下游。节点过多时会折叠，建议配合 CRUD 过滤深入查看。',
+            )}
           </p>
           <div className="diagram-toolbar">
             <button type="button" className="crud-btn" onClick={() => impactRef.current?.fit()}>
-              Fit / 适配
+              {bi(locale, 'Fit', '适配')}
             </button>
             <button type="button" className="crud-btn" onClick={() => impactRef.current?.reset()}>
-              Reset / 重置
+              {bi(locale, 'Reset', '重置')}
             </button>
             <button
               type="button"
               className="crud-btn"
               onClick={() => impactRef.current?.exportSvg(impactFileName)}
             >
-              Export SVG / 导出 SVG
+              {bi(locale, 'Export SVG', '导出 SVG')}
             </button>
             <Link to={crudFocusLink} className="crud-btn table-lens-link-btn">
-              Open CRUD filtered / 打开 CRUD 过滤
+              {bi(locale, 'Open CRUD filtered', '打开 CRUD 过滤')}
             </Link>
             <span className="diagram-status">
               {impactRenderState === 'rendered'
@@ -417,13 +436,15 @@ export function TableDetailPage() {
                 void toggleImpactFullscreen();
               }}
             >
-              {isImpactFullscreen ? 'Exit Fullscreen / 退出全屏' : 'Fullscreen / 全屏'}
+              {isImpactFullscreen
+                ? bi(locale, 'Exit Fullscreen', '退出全屏')
+                : bi(locale, 'Fullscreen', '全屏')}
             </button>
           </div>
         </article>
 
-        {renderFlowList('Writes to this table / 写入该表', groups.writes, canonicalName)}
-        {renderFlowList('Reads from this table / 读取该表', groups.reads, canonicalName)}
+        {renderFlowList(bi(locale, 'Writes to this table', '写入该表'), groups.writes, canonicalName, locale)}
+        {renderFlowList(bi(locale, 'Reads from this table', '读取该表'), groups.reads, canonicalName, locale)}
       </div>
     </section>
   );

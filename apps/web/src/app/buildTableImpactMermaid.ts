@@ -1,3 +1,4 @@
+import { dl, type DiagramLocale } from './diagramLabels';
 import type { CrudEdgeRecord, FlowRecord, ProjectData } from './useProjectData';
 
 const OPS_ORDER = ['C', 'R', 'U', 'D'];
@@ -6,6 +7,7 @@ export type TableImpactOptions = {
   maxWriteFlows?: number;
   maxReadFlows?: number;
   focusedFlowId?: string;
+  locale?: DiagramLocale;
 };
 
 export type BuildTableImpactResult = {
@@ -80,9 +82,9 @@ function tableLabel(tableName: string): string {
   return tableName;
 }
 
-function flowLabel(flow: FlowRecord, ops: string, focused: boolean): string {
+function flowLabel(flow: FlowRecord, ops: string, focused: boolean, locale: DiagramLocale): string {
   const star = focused ? '★ ' : '';
-  return `${star}${flow.id} | ${flow.name_en} / ${flow.name_zh} (${ops})`;
+  return `${star}${flow.id} | ${locale === 'zh' ? flow.name_zh : flow.name_en} (${ops})`;
 }
 
 function normalizeEdgesForTable(
@@ -116,8 +118,9 @@ export function buildTableImpactMermaid(
   tableName: string,
   options: TableImpactOptions = {},
 ): BuildTableImpactResult {
+  const locale = options.locale ?? 'zh';
   if (!data) {
-    return errorResult('Project data not loaded / 项目数据尚未加载');
+    return errorResult(dl(locale, 'Project data not loaded', '项目数据尚未加载'));
   }
 
   const maxWriteFlows = Math.max(1, options.maxWriteFlows ?? 15);
@@ -131,7 +134,7 @@ export function buildTableImpactMermaid(
     data.tables.find((table) => canonicalizeTable(table.name, aliasMap) === canonicalTarget);
 
   if (!tableRecord && !canonicalTarget) {
-    return errorResult(`Table not found: ${tableName} / 未找到数据表`);
+    return errorResult(dl(locale, `Table not found: ${tableName}`, `未找到数据表:${tableName}`));
   }
 
   const flowById = new Map<string, FlowRecord>();
@@ -179,13 +182,15 @@ export function buildTableImpactMermaid(
   lines.push('class TBL center;');
 
   if (visibleWrite.length === 0) {
-    lines.push('W_NONE["No write flows / 无写入流程"] --> TBL');
+    lines.push(`W_NONE["${dl(locale, 'No write flows', '无写入流程')}"] --> TBL`);
     lines.push('class W_NONE write;');
   } else {
     for (const row of visibleWrite) {
       const nodeId = safeNodeId('WF', row.flow.id);
       lines.push(
-        `${nodeId}["${escapeLabel(flowLabel(row.flow, row.ops, row.flow.id === focusedFlowId))}"] --> TBL`,
+        `${nodeId}["${escapeLabel(
+          flowLabel(row.flow, row.ops, row.flow.id === focusedFlowId, locale),
+        )}"] --> TBL`,
       );
       lines.push(`class ${nodeId} write;`);
       if (ownerService && row.flow.owner_service === ownerService) {
@@ -193,24 +198,30 @@ export function buildTableImpactMermaid(
       }
     }
     if (writeCollapsed > 0) {
-      lines.push(`W_MORE["+${writeCollapsed} more writes / 其余${writeCollapsed}写入"] --> TBL`);
+      lines.push(
+        `W_MORE["${dl(locale, `+${writeCollapsed} more writes`, `其余${writeCollapsed}写入`)}"] --> TBL`,
+      );
       lines.push('class W_MORE write;');
     }
   }
 
   if (visibleRead.length === 0) {
-    lines.push('TBL --> R_NONE["No read flows / 无读取流程"]');
+    lines.push(`TBL --> R_NONE["${dl(locale, 'No read flows', '无读取流程')}"]`);
     lines.push('class R_NONE read;');
   } else {
     for (const row of visibleRead) {
       const nodeId = safeNodeId('RF', row.flow.id);
       lines.push(
-        `TBL --> ${nodeId}["${escapeLabel(flowLabel(row.flow, row.ops, row.flow.id === focusedFlowId))}"]`,
+        `TBL --> ${nodeId}["${escapeLabel(
+          flowLabel(row.flow, row.ops, row.flow.id === focusedFlowId, locale),
+        )}"]`,
       );
       lines.push(`class ${nodeId} read;`);
     }
     if (readCollapsed > 0) {
-      lines.push(`TBL --> R_MORE["+${readCollapsed} more reads / 其余${readCollapsed}读取"]`);
+      lines.push(
+        `TBL --> R_MORE["${dl(locale, `+${readCollapsed} more reads`, `其余${readCollapsed}读取`)}"]`,
+      );
       lines.push('class R_MORE read;');
     }
   }
