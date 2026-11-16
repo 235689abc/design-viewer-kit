@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { buildFlowDeliveryChecklist } from '../app/deliveryChecklist';
 import { buildProjectIndexes, getServiceDisplay } from '../app/indexes';
+import { collectFindings, type FindingsSummary } from '../app/findings';
+import { useLocale, bi } from '../app/i18n';
 import { loadRuntimeOverlay, type RuntimeFlowMetric } from '../app/runtimeMetrics';
 import { getRuntimeBaseUrl, subscribeRuntimeBaseUrl } from '../app/runtimeClient';
 import { useProjectData } from '../app/useProjectData';
@@ -15,6 +17,7 @@ type FlowRow = {
   checklistSummary: string;
   missingIdempotency: boolean;
   missingEvents: boolean;
+  findings: FindingsSummary;
 };
 
 function isMissingIdempotency(value: string): boolean {
@@ -24,6 +27,7 @@ function isMissingIdempotency(value: string): boolean {
 
 export function FlowsPage() {
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
   const [searchParams] = useSearchParams();
   const [keyword, setKeyword] = useState('');
   const [sortBy, setSortBy] = useState<'score_desc' | 'score_asc' | 'id_asc'>('score_desc');
@@ -84,6 +88,16 @@ export function FlowsPage() {
     if (!data) {
       return [];
     }
+    const findingsByFlow = new Map<string, FindingsSummary>();
+    for (const finding of collectFindings(data)) {
+      if (!finding.flowId) {
+        continue;
+      }
+      const current = findingsByFlow.get(finding.flowId) ?? { red: 0, yellow: 0, green: 0, info: 0, total: 0 };
+      current[finding.severity] += 1;
+      current.total += 1;
+      findingsByFlow.set(finding.flowId, current);
+    }
     return data.flows.map((flow) => {
       const checklist = buildFlowDeliveryChecklist({
         data,
@@ -94,16 +108,17 @@ export function FlowsPage() {
       });
       return {
         id: flow.id,
-        name: `${flow.name_en} / ${flow.name_zh}`,
+        name: locale === 'zh' ? flow.name_zh : flow.name_en,
         owner: getServiceDisplay(flow.owner_service, indexes.mapServices),
         score: checklist.score,
         mode: checklist.mode,
         checklistSummary: `${checklist.achievedWeight}/${checklist.maxWeight}`,
         missingIdempotency: isMissingIdempotency(flow.idempotency_key),
-        missingEvents: flow.events_appended.length === 0,
+        missingEvents: (flow.events_appended ?? []).length === 0,
+        findings: findingsByFlow.get(flow.id) ?? { red: 0, yellow: 0, green: 0, info: 0, total: 0 },
       };
     });
-  }, [data, indexes.mapServices, runtimeAvailable, runtimeBaseUrl, runtimeFlowMetrics]);
+  }, [data, indexes.mapServices, locale, runtimeAvailable, runtimeBaseUrl, runtimeFlowMetrics]);
 
   const filteredRows = useMemo(() => {
     const loweredKeyword = keyword.trim().toLowerCase();
@@ -189,11 +204,12 @@ export function FlowsPage() {
           <table className="table-lens-grid">
             <thead>
               <tr>
-                <th>Flow ID</th>
-                <th>Name / 名称</th>
-                <th>Owner / 归属服务</th>
-                <th>Delivery Score / 交付评分</th>
-                <th>Mode / 模式</th>
+                <th>{bi(locale, 'Flow ID', '流程 ID')}</th>
+                <th>{bi(locale, 'Name', '名称')}</th>
+                <th>{bi(locale, 'Owner', '归属服务')}</th>
+                <th>{bi(locale, 'Findings', '发现')}</th>
+                <th>{bi(locale, 'Delivery Score', '交付评分')}</th>
+                <th>{bi(locale, 'Mode', '模式')}</th>
               </tr>
             </thead>
             <tbody>
@@ -206,6 +222,34 @@ export function FlowsPage() {
                   </td>
                   <td>{row.name}</td>
                   <td>{row.owner}</td>
+                  <td>
+                    {row.findings.total === 0 ? (
+                      <span className="subtle">-</span>
+                    ) : (
+                      <>
+                        {row.findings.red > 0 && (
+                          <span className="sev-badge sev-badge-red" style={{ marginRight: 4 }}>
+                            {bi(locale, 'Red', '红')} {row.findings.red}
+                          </span>
+                        )}
+                        {row.findings.yellow > 0 && (
+                          <span className="sev-badge sev-badge-yellow" style={{ marginRight: 4 }}>
+                            {bi(locale, 'Yellow', '黄')} {row.findings.yellow}
+                          </span>
+                        )}
+                        {row.findings.green > 0 && (
+                          <span className="sev-badge sev-badge-green" style={{ marginRight: 4 }}>
+                            {bi(locale, 'Green', '绿')} {row.findings.green}
+                          </span>
+                        )}
+                        {row.findings.info > 0 && (
+                          <span className="sev-badge sev-badge-info">
+                            {bi(locale, 'Info', '注')} {row.findings.info}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </td>
                   <td>
                     <span
                       className={`delivery-score-badge ${

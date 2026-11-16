@@ -10,6 +10,8 @@ import {
   subscribeRuntimeBaseUrl,
 } from '../app/runtimeClient';
 import { useProjectData } from '../app/useProjectData';
+import { collectFindings, summarizeFindings } from '../app/findings';
+import { useLocale, bi } from '../app/i18n';
 
 function isMissingText(value: string | undefined): boolean {
   const normalized = (value ?? '').trim();
@@ -34,8 +36,11 @@ function collectRuntimeColumns(records: Record<string, unknown>[]): string[] {
 
 export function DashboardPage() {
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
   const indexes = useMemo(() => buildProjectIndexes(data), [data]);
   const governance = useMemo(() => runGovernanceChecks(data), [data]);
+  const findings = useMemo(() => collectFindings(data), [data]);
+  const findingsSummary = useMemo(() => summarizeFindings(findings), [findings]);
   const [runtimeBaseUrl, setRuntimeBaseUrl] = useState<string | null>(() => getRuntimeBaseUrl());
   const [runtimeLoading, setRuntimeLoading] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
@@ -95,7 +100,7 @@ export function DashboardPage() {
     const tablesMissingOwner = tables.filter((table) => isMissingText(table.owner_service)).length;
     const tablesMissingIntroduced = tables.filter((table) => isMissingText(table.introduced_in)).length;
     const flowsMissingIdempotency = flows.filter((flow) => isMissingText(flow.idempotency_key)).length;
-    const flowsMissingEvents = flows.filter((flow) => flow.events_appended.length === 0).length;
+    const flowsMissingEvents = flows.filter((flow) => (flow.events_appended ?? []).length === 0).length;
     const aliasTables = tables.filter((table) => !!table.alias_of).length;
 
     const topTablesByWriteCount = Array.from(indexes.edgesByTable.entries())
@@ -115,7 +120,7 @@ export function DashboardPage() {
     const topFlowsByTableTouch = flows
       .map((flow) => ({
         flowId: flow.id,
-        flowName: `${flow.name_en} / ${flow.name_zh}`,
+        flowName: locale === 'zh' ? flow.name_zh : flow.name_en,
         touchedTables: indexes.edgesByFlow.get(flow.id)?.size ?? 0,
       }))
       .sort((a, b) => b.touchedTables - a.touchedTables || a.flowId.localeCompare(b.flowId))
@@ -135,157 +140,178 @@ export function DashboardPage() {
       topTablesByWriteCount,
       topFlowsByTableTouch,
     };
-  }, [data, indexes.edgesByFlow, indexes.edgesByTable]);
+  }, [data, indexes.edgesByFlow, indexes.edgesByTable, locale]);
 
   const runtimeRows = runtimeOverlay?.events ?? [];
   const runtimeColumns = useMemo(() => collectRuntimeColumns(runtimeRows), [runtimeRows]);
-  const topGovernanceIssues = useMemo(
-    () =>
-      [...governance.all]
-        .sort((a, b) => {
-          if (a.severity !== b.severity) {
-            return a.severity === 'violation' ? -1 : 1;
-          }
-          return a.rule.localeCompare(b.rule);
-        })
-        .slice(0, 5),
-    [governance.all],
-  );
-  const governanceRuleCounts = useMemo(
-    () =>
-      Object.entries(governance.byRule)
-        .map(([rule, items]) => ({ rule, count: items.length }))
-        .sort((a, b) => b.count - a.count || a.rule.localeCompare(b.rule)),
-    [governance.byRule],
+  const topFindings = useMemo(
+    () => findings.filter((finding) => finding.severity === 'red' || finding.severity === 'yellow').slice(0, 6),
+    [findings],
   );
 
   const actionItems = [
     {
-      label: 'Tables missing owner / 表缺少 owner',
+      key: 'missing-owner',
       count: metrics.tablesMissingOwner,
       to: '/tables?filter=missing-owner',
+      en: 'Tables missing owner',
+      zh: '表缺少 owner',
     },
     {
-      label: 'Tables missing introduced_in / 表缺少 introduced_in',
+      key: 'missing-introduced',
       count: metrics.tablesMissingIntroduced,
       to: '/tables?filter=missing-introduced',
+      en: 'Tables missing introduced_in',
+      zh: '表缺少 introduced_in',
     },
     {
-      label: 'Planned tables / planned 表',
+      key: 'planned',
       count: metrics.plannedTables,
       to: '/tables?filter=planned',
+      en: 'Planned tables',
+      zh: 'planned 表',
     },
     {
-      label: 'Flows missing idempotency / 流程缺少幂等键',
+      key: 'missing-idempotency',
       count: metrics.flowsMissingIdempotency,
       to: '/flows?filter=missing-idempotency',
+      en: 'Flows missing idempotency key',
+      zh: '流程缺少幂等键',
     },
     {
-      label: 'Flows missing events / 流程缺少事件',
+      key: 'missing-events',
       count: metrics.flowsMissingEvents,
       to: '/flows?filter=missing-events',
+      en: 'Flows missing events_appended',
+      zh: '流程缺少事件声明',
     },
   ];
 
   return (
     <section className="page">
-      <h1>Dashboard / 总览</h1>
-      <p className="subtle">Governance cockpit built from `/data/index.json`.</p>
+      <h1>{bi(locale, 'Dashboard', '总览')}</h1>
+      <p className="subtle">
+        {bi(
+          locale,
+          'Governance cockpit built from the design manifest.',
+          '由设计清单驱动的治理驾驶舱。',
+        )}
+        {data && <span> · {data.meta.generated_at}</span>}
+      </p>
 
-      {loading && <p>Loading project data... / 正在加载项目数据...</p>}
-      {error && <p className="error">Failed to load project data / 加载项目数据失败: {error}</p>}
+      {loading && <p className="subtle">{bi(locale, 'Loading project data…', '正在加载项目数据…')}</p>}
+      {error && <p className="error">{bi(locale, 'Failed to load project data: ', '加载项目数据失败:')}{error}</p>}
 
       {data && !error && (
         <>
-          <div className="card-grid">
-            <article className="card">
-              <h2>Project / 项目</h2>
-              <p>{data.meta.project}</p>
-              <p className="subtle">{data.meta.generated_at}</p>
+          <div className="health-strip">
+            <Link to="/findings#findings-red" className="stat-block stat-block-red">
+              <span className="stat-num stat-num-red">{findingsSummary.red}</span>
+              <span className="stat-label">{bi(locale, 'Blocking findings', '阻断(红)')}</span>
+            </Link>
+            <Link to="/findings#findings-yellow" className="stat-block stat-block-yellow">
+              <span className="stat-num stat-num-yellow">{findingsSummary.yellow}</span>
+              <span className="stat-label">{bi(locale, 'Debt findings', '欠账(黄)')}</span>
+            </Link>
+            <Link to="/findings#findings-green" className="stat-block stat-block-green">
+              <span className="stat-num stat-num-green">{findingsSummary.green}</span>
+              <span className="stat-label">{bi(locale, 'Healthy evidence', '达标存照(绿)')}</span>
+            </Link>
+            <div className="stat-block stat-block-info">
+              <span className="stat-num stat-num-info">
+                {metrics.flowCount}
+                <span className="stat-label" style={{ display: 'inline' }}> {bi(locale, 'flows', '流程')}</span>
+              </span>
+              <span className="stat-label">
+                {bi(
+                  locale,
+                  `${metrics.tableCount} tables · ${metrics.serviceCount} services · ${metrics.crudEdgeCount} edges`,
+                  `${metrics.tableCount} 表 · ${metrics.serviceCount} 服务 · ${metrics.crudEdgeCount} 读写边`,
+                )}
+              </span>
+            </div>
+          </div>
+
+          <div className="detail-grid-2col">
+            <article className="card card-accent-red">
+              <h2>{bi(locale, 'Top Findings', '重点发现')}</h2>
+              {topFindings.length === 0 && (
+                <p className="subtle">{bi(locale, 'No red/yellow findings.', '无红/黄级发现。')}</p>
+              )}
+              <ul className="findings-list">
+                {topFindings.map((finding, index) => (
+                  <li
+                    key={`dashboard-finding-${finding.ref}-${index}`}
+                    className={`findings-item findings-item-${finding.severity}`}
+                    style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}
+                  >
+                    <span>
+                      <span className={`sev-badge sev-badge-${finding.severity}`} style={{ marginRight: 8 }}>
+                        {finding.ref}
+                      </span>
+                      <span className="findings-note">
+                        {finding.note.length > 90 ? `${finding.note.slice(0, 90)}…` : finding.note}
+                      </span>
+                    </span>
+                    <span className="findings-target">
+                      {finding.flowId && (
+                        <Link className="sev-badge sev-badge-info" to={`/flows/${encodeURIComponent(finding.flowId)}`}>
+                          {finding.flowId}
+                        </Link>
+                      )}
+                      {finding.table && (
+                        <Link className="sev-badge sev-badge-info" to={`/tables/${encodeURIComponent(finding.table)}`}>
+                          {finding.table}
+                        </Link>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p style={{ marginTop: 10 }}>
+                <Link to="/findings">{bi(locale, 'All findings →', '全部发现 →')}</Link>
+                {' · '}
+                <Link to="/governance">
+                  {bi(
+                    locale,
+                    `Rules (${governance.violations.length} violations / ${governance.warnings.length} warnings)`,
+                    `治理规则(${governance.violations.length} 违例 / ${governance.warnings.length} 警告)`,
+                  )}
+                </Link>
+              </p>
             </article>
+
             <article className="card">
-              <h2>Counts / 总量</h2>
-              <p>flows: {metrics.flowCount}</p>
-              <p>tables: {metrics.tableCount}</p>
-              <p>crudEdges: {metrics.crudEdgeCount}</p>
-              <p>services: {metrics.serviceCount}</p>
-            </article>
-            <article className="card">
-              <h2>Governance Gaps / 治理缺口</h2>
-              <p>planned tables: {metrics.plannedTables}</p>
-              <p>tables missing owner: {metrics.tablesMissingOwner}</p>
-              <p>tables missing introduced_in: {metrics.tablesMissingIntroduced}</p>
-              <p>flows missing idempotency_key: {metrics.flowsMissingIdempotency}</p>
-              <p>flows missing events_appended: {metrics.flowsMissingEvents}</p>
-              <p>alias tables: {metrics.aliasTables}</p>
-            </article>
-            <article className="card">
-              <h2>Runtime Snapshot / 运行态快照</h2>
+              <h2>{bi(locale, 'Runtime Snapshot', '运行态快照')}</h2>
               {!runtimeBaseUrl && (
                 <p>
-                  Set runtime url to enable / 请先在 <Link to="/settings">Settings / 设置</Link> 填写 Runtime URL。
+                  {bi(locale, 'Set runtime url in ', '请先在')}{' '}
+                  <Link to="/settings">{bi(locale, 'Settings', '设置')}</Link>
+                  {bi(locale, ' to enable.', ' 填写 Runtime URL。')}
                 </p>
               )}
               {runtimeBaseUrl && (
                 <>
-                  <p className="subtle">source: <code>{runtimeBaseUrl}</code></p>
-                  <p>recent events: {runtimeRows.length}</p>
-                  <p>pending outbox: {runtimeOverlay?.pendingOutbox ?? 0}</p>
-                  <p>failed outbox: {runtimeOverlay?.failedOutbox ?? 0}</p>
+                  <p className="subtle">
+                    {bi(locale, 'source', '来源')}: <code>{runtimeBaseUrl}</code>
+                  </p>
+                  <div className="field-list">
+                    <span className="field-row"><span className="field-key">{bi(locale, 'recent events', '近期事件')}</span><span className="field-value">{runtimeRows.length}</span></span>
+                    <span className="field-row"><span className="field-key">{bi(locale, 'pending outbox', 'outbox 待发')}</span><span className="field-value">{runtimeOverlay?.pendingOutbox ?? 0}</span></span>
+                    <span className="field-row"><span className="field-key">{bi(locale, 'failed outbox', 'outbox 失败')}</span><span className="field-value">{runtimeOverlay?.failedOutbox ?? 0}</span></span>
+                  </div>
                 </>
               )}
             </article>
-
-            <article className="card">
-              <h2>Governance Alerts / 治理报警</h2>
-              <p>violations: {governance.violations.length}</p>
-              <p>warnings: {governance.warnings.length}</p>
-              <p>
-                <Link to="/governance">Open Governance Page / 打开治理页</Link>
-              </p>
-              <ul className="inline-list">
-                {governanceRuleCounts.map((row) => (
-                  <li key={`dashboard-rule-count-${row.rule}`}>
-                    <Link to={`/governance?rule=${encodeURIComponent(row.rule)}`}>
-                      {row.rule}
-                    </Link>
-                    {' '}({row.count})
-                  </li>
-                ))}
-              </ul>
-              <h3>Top issues / 重点问题</h3>
-              <ul className="inline-list">
-                {topGovernanceIssues.length === 0 && <li>-</li>}
-                {topGovernanceIssues.map((item) => (
-                  <li key={`dashboard-governance-${item.id}`}>
-                    <Link to={`/governance?rule=${encodeURIComponent(item.rule)}`}>
-                      [{item.severity}] {item.rule}
-                    </Link>
-                    {item.flowId && (
-                      <>
-                        {' '}·{' '}
-                        <Link to={`/flows/${encodeURIComponent(item.flowId)}`}>{item.flowId}</Link>
-                      </>
-                    )}
-                    {item.table && (
-                      <>
-                        {' '}·{' '}
-                        <Link to={`/tables/${encodeURIComponent(item.table)}`}>{item.table}</Link>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </article>
           </div>
 
-          <div className="card-grid">
+          <div className="detail-grid-2col">
             <article className="card">
-              <h2>Action Items / 治理待办</h2>
+              <h2>{bi(locale, 'Action Items', '治理待办')}</h2>
               <ul className="action-item-list">
                 {actionItems.map((item) => (
-                  <li key={item.label} className="action-item">
-                    <Link to={item.to}>{item.label}</Link>
+                  <li key={item.key} className="action-item">
+                    <Link to={item.to}>{bi(locale, item.en, item.zh)}</Link>
                     <span className={item.count > 0 ? 'action-count-danger' : 'action-count-ok'}>
                       {item.count}
                     </span>
@@ -295,9 +321,9 @@ export function DashboardPage() {
             </article>
 
             <article className="card">
-              <h2>Top Tables by Writes / 写入最频繁表</h2>
+              <h2>{bi(locale, 'Top Tables by Writes', '写入最频繁表')}</h2>
               <ul className="inline-list">
-                {metrics.topTablesByWriteCount.length === 0 && <li>-</li>}
+                {metrics.topTablesByWriteCount.length === 0 && <li className="subtle">-</li>}
                 {metrics.topTablesByWriteCount.map((row) => (
                   <li key={`top-table-${row.tableName}`}>
                     <Link to={`/tables/${encodeURIComponent(row.tableName)}`}>{row.tableName}</Link>
@@ -305,16 +331,13 @@ export function DashboardPage() {
                   </li>
                 ))}
               </ul>
-            </article>
-
-            <article className="card">
-              <h2>Top Flows by Table Touch / 触达表最多流程</h2>
+              <h2 style={{ marginTop: 16 }}>{bi(locale, 'Top Flows by Table Touch', '触达表最多流程')}</h2>
               <ul className="inline-list">
-                {metrics.topFlowsByTableTouch.length === 0 && <li>-</li>}
+                {metrics.topFlowsByTableTouch.length === 0 && <li className="subtle">-</li>}
                 {metrics.topFlowsByTableTouch.map((row) => (
                   <li key={`top-flow-${row.flowId}`}>
                     <Link to={`/flows/${encodeURIComponent(row.flowId)}`}>{row.flowId}</Link>
-                    {' '}({row.touchedTables}) - {row.flowName}
+                    {' '}({row.touchedTables}) — {row.flowName}
                   </li>
                 ))}
               </ul>
@@ -322,24 +345,28 @@ export function DashboardPage() {
           </div>
 
           <article className="card">
-            <h2>Runtime Events / 运行态事件</h2>
+            <h2>{bi(locale, 'Runtime Events', '运行态事件')}</h2>
             {!runtimeBaseUrl && (
               <p>
-                Set runtime url to enable / 请先在 <Link to="/settings">Settings / 设置</Link> 填写 Runtime URL。
+                {bi(locale, 'Set runtime url in ', '请先在')}{' '}
+                <Link to="/settings">{bi(locale, 'Settings', '设置')}</Link>
+                {bi(locale, ' to enable.', ' 填写 Runtime URL。')}
               </p>
             )}
             {runtimeBaseUrl && (
               <>
-                <p className="subtle">Source: <code>{runtimeBaseUrl}{runtimeEventsPath(data)}?limit=200</code></p>
-                {runtimeLoading && <p>Loading runtime events... / 正在加载运行态事件...</p>}
+                <p className="subtle">
+                  {bi(locale, 'Source', '来源')}: <code>{runtimeBaseUrl}{runtimeEventsPath(data)}?limit=200</code>
+                </p>
+                {runtimeLoading && <p>{bi(locale, 'Loading runtime events…', '正在加载运行态事件…')}</p>}
                 {runtimeError && (
                   <p className="error">
-                    Runtime overlay warning: {runtimeError}
-                    {' '}（可能是接口不可用或 CORS，请检查 Runtime URL）
+                    {bi(locale, 'Runtime overlay warning: ', '运行态告警:')}{runtimeError}
+                    {bi(locale, ' (endpoint may be down or CORS blocked)', '(可能是接口不可用或 CORS,请检查 Runtime URL)')}
                   </p>
                 )}
                 {!runtimeLoading && runtimeRows.length === 0 && (
-                  <p className="subtle">No runtime events returned / 当前没有返回事件。</p>
+                  <p className="subtle">{bi(locale, 'No runtime events returned.', '当前没有返回事件。')}</p>
                 )}
                 {!runtimeLoading && runtimeRows.length > 0 && (
                   <div className="runtime-table-wrap">

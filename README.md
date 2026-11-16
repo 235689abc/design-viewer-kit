@@ -1,10 +1,15 @@
-# Design Viewer Kit
+# 脚手架 Scaffold · Design Viewer Kit
 
 Design Viewer Kit turns a small, reviewable flow manifest into a navigable
 design inventory: service and table ownership, CRUD edges, Mermaid diagrams,
 flow detail pages, governance checks, and optional GET-only runtime evidence.
 It is designed to be copied into an existing project or used as a standalone
 viewer for architecture reviews.
+
+**v0.2 — 脚手架升级**:统一设计 token(亮/暗双主题,默认亮色)、中文默认+一键切换英文、
+品牌化「脚手架」界面与分组导航,以及 **发现(Findings)机制**——把 manifest 的
+`issues` 立案、`notes` 中的 `QC-NN` 标记与治理规则判定聚合成红/黄/绿/注四档驾驶舱。
+清单字段说明见 [`docs/USAGE.md`](docs/USAGE.md)。
 
 The default mode is static and read-only. The kit does not scan a production
 database, call a write API, run migrations, or restart a service.
@@ -20,6 +25,7 @@ npm install
 python3 tools/validate_manifest.py --spec docs/diagrams/flows.json
 npm run generate
 npm run build
+npm test
 npm run dev
 ```
 

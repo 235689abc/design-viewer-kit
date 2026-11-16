@@ -8,6 +8,17 @@ export type Service = {
   source_ref?: string;
 };
 
+/**
+ * 人工立案的发现(如质量督查 QC-NN 引用)。severity 语义:
+ * red=阻断 / yellow=欠账 / green=达标存照 / info=中性说明。
+ */
+export type Issue = {
+  ref: string;
+  severity: 'red' | 'yellow' | 'green' | 'info';
+  note?: string;
+  href?: string;
+};
+
 export type Table = {
   name: string;
   state: string;
@@ -20,6 +31,7 @@ export type Table = {
   notes?: string;
   source_ref?: string;
   columns?: Array<Record<string, unknown>>;
+  issues?: Issue[];
 };
 
 export type FlowWrite = {
@@ -49,6 +61,7 @@ export type Flow = {
   deprecated?: boolean;
   replaced_by?: string;
   aliases?: string[];
+  issues?: Issue[];
 };
 
 export type CrudEdge = {

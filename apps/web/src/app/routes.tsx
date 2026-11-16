@@ -11,6 +11,7 @@ import { SchemaDetailPage } from '../pages/SchemaDetail';
 import { SettingsPage } from '../pages/Settings';
 import { DiffPage } from '../pages/Diff';
 import { GovernancePage } from '../pages/Governance';
+import { FindingsPage } from '../pages/Findings';
 
 export function AppRoutes() {
   return useRoutes([
@@ -19,6 +20,7 @@ export function AppRoutes() {
       element: <Layout />,
       children: [
         { index: true, element: <DashboardPage /> },
+        { path: 'findings', element: <FindingsPage /> },
         { path: 'crud', element: <CrudPage /> },
         { path: 'flows', element: <FlowsPage /> },
         { path: 'flows/:id', element: <FlowDetailPage /> },

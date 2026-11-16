@@ -9,6 +9,7 @@ import {
 } from 'react';
 import mermaid from 'mermaid';
 import svgPanZoom from 'svg-pan-zoom';
+import { useTheme, type Theme } from '../app/theme';
 
 type MermaidStatus = 'idle' | 'rendered' | 'error';
 
@@ -52,16 +53,44 @@ type PanZoomInstance = {
   destroy: () => void;
 };
 
-let mermaidInitialized = false;
+// mermaid 调色与全站 --dv-* token 同源(亮/暗两套);initialize 幂等,可随主题重调
+const MERMAID_THEME_VARIABLES: Record<Theme, Record<string, string>> = {
+  light: {
+    background: '#ffffff',
+    primaryColor: '#eef1f5',
+    primaryBorderColor: '#bcc5d2',
+    primaryTextColor: '#1b2434',
+    lineColor: '#8493a8',
+    secondaryColor: '#e8eefc',
+    secondaryBorderColor: '#1d4ed8',
+    tertiaryColor: '#e5f4ea',
+    edgeLabelBackground: '#ffffff',
+    clusterBkg: '#f4f6f9',
+    clusterBorder: '#d8dee7',
+  },
+  dark: {
+    background: '#161d29',
+    primaryColor: '#1e2735',
+    primaryBorderColor: '#3d4a5f',
+    primaryTextColor: '#e7ecf4',
+    lineColor: '#71809a',
+    secondaryColor: '#1c2942',
+    secondaryBorderColor: '#8ab0ff',
+    tertiaryColor: '#1d3328',
+    edgeLabelBackground: '#161d29',
+    clusterBkg: '#0f141d',
+    clusterBorder: '#2b3648',
+  },
+};
+
 let renderSeq = 0;
 
-function ensureMermaidInit() {
-  if (mermaidInitialized) {
-    return;
-  }
+function ensureMermaidInit(theme: Theme) {
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'loose',
+    theme: 'base',
+    themeVariables: MERMAID_THEME_VARIABLES[theme],
     flowchart: {
       htmlLabels: false,
       useMaxWidth: false,
@@ -70,7 +99,6 @@ function ensureMermaidInit() {
       useMaxWidth: false,
     },
   });
-  mermaidInitialized = true;
 }
 
 function ensureSvgNamespaces(svgText: string): string {
@@ -231,10 +259,11 @@ function normalizeSvgViewBox(svgEl: SVGSVGElement) {
   const pad = 24;
   const width = Math.max(1, merged.maxX - merged.minX);
   const height = Math.max(1, merged.maxY - merged.minY);
-  svgEl.setAttribute(
-    'viewBox',
-    `${merged.minX - pad} ${merged.minY - pad} ${width + pad * 2} ${height + pad * 2}`,
-  );
+  const vbValue = `${merged.minX - pad} ${merged.minY - pad} ${width + pad * 2} ${height + pad * 2}`;
+  svgEl.setAttribute('viewBox', vbValue);
+  // svg-pan-zoom init 会移除 viewBox 并按 init 瞬间的几何建立内部状态(之后会陈旧);
+  // dataset 里留一份归一化真值,fit 时作为 getBBox 的兜底。
+  svgEl.dataset.dvViewBox = vbValue;
   svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svgEl.removeAttribute('width');
   svgEl.removeAttribute('height');
@@ -243,6 +272,7 @@ function normalizeSvgViewBox(svgEl: SVGSVGElement) {
 export const MermaidPanZoom = forwardRef<MermaidPanZoomHandle, MermaidPanZoomProps>(
   function MermaidPanZoom(props, ref) {
     const { title, mermaidCode, height = '70vh', onReady } = props;
+    const [theme] = useTheme();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const panZoomRef = useRef<PanZoomInstance | null>(null);
     const [status, setStatus] = useState<MermaidStatus>('idle');
@@ -255,7 +285,12 @@ export const MermaidPanZoom = forwardRef<MermaidPanZoomHandle, MermaidPanZoomPro
 
     const destroyPanZoom = useCallback(() => {
       if (panZoomRef.current) {
-        panZoomRef.current.destroy();
+        try {
+          panZoomRef.current.destroy();
+        } catch {
+          // svg-pan-zoom 在零尺寸/未布局 SVG 上 destroy 会抛 SVGMatrix 不可逆;
+          // 实例随 DOM 卸载一并丢弃即可,不让异常冒泡炸掉 React 树。
+        }
         panZoomRef.current = null;
       }
     }, []);
@@ -265,37 +300,84 @@ export const MermaidPanZoom = forwardRef<MermaidPanZoomHandle, MermaidPanZoomPro
     }, []);
 
     const fitToViewBox = useCallback(() => {
-      if (!panZoomRef.current) {
-        return;
-      }
       const panZoom = panZoomRef.current;
-      panZoom.resize?.();
-      panZoom.updateBBox?.();
-
-      const sizes = panZoom.getSizes?.();
-      if (!sizes || !sizes.viewBox) {
-        panZoom.fit();
-        panZoom.center();
+      if (!panZoom) {
         return;
       }
+      try {
+        panZoom.resize?.();
+        panZoom.updateBBox?.();
+        const sizes = panZoom.getSizes?.();
+        const svgEl = getCurrentSvgElement();
 
-      const viewportWidth = Math.max(1, sizes.width);
-      const viewportHeight = Math.max(1, sizes.height);
-      const boxWidth = Math.max(1, sizes.viewBox.width);
-      const boxHeight = Math.max(1, sizes.viewBox.height);
-      const scale = Math.min(viewportWidth / boxWidth, viewportHeight / boxHeight);
-      if (!Number.isFinite(scale) || scale <= 0) {
-        panZoom.fit();
-        panZoom.center();
-        return;
+        // 内容几何真值:现场重算内容包围盒(字体晚到会改变 mermaid 文本度量,
+        // init 时存的 dataset viewBox 会失真);dataset 与 pan-zoom sizes 逐级兜底。
+        let boxX = 0;
+        let boxY = 0;
+        let boxWidth = 1;
+        let boxHeight = 1;
+        let geometryReady = false;
+        const inner = svgEl?.querySelector('g') ?? null;
+        if (inner) {
+          try {
+            const box = inner.getBBox();
+            if (box.width > 0 && box.height > 0) {
+              boxX = box.x;
+              boxY = box.y;
+              boxWidth = box.width;
+              boxHeight = box.height;
+              geometryReady = true;
+            }
+          } catch {
+            // getBBox 不可用(未渲染等):走兜底链
+          }
+        }
+        if (!geometryReady) {
+          const parts = (svgEl?.dataset.dvViewBox ?? '')
+            .split(/[\s,]+/)
+            .map(Number);
+          if (parts.length === 4 && parts.every(Number.isFinite)) {
+            boxX = parts[0];
+            boxY = parts[1];
+            boxWidth = parts[2];
+            boxHeight = parts[3];
+            geometryReady = true;
+          } else if (sizes?.viewBox) {
+            boxX = sizes.viewBox.x;
+            boxY = sizes.viewBox.y;
+            boxWidth = sizes.viewBox.width;
+            boxHeight = sizes.viewBox.height;
+            geometryReady = true;
+          }
+        }
+        if (!geometryReady) {
+          panZoom.fit();
+          panZoom.center();
+          return;
+        }
+
+        // fit 参照=SVG 自身可视尺寸(容器可能比 svg 宽,用容器尺寸会把内容 fit 出可视区)
+        const viewportWidth = Math.max(1, svgEl?.clientWidth || sizes?.width || 1);
+        const viewportHeight = Math.max(1, svgEl?.clientHeight || sizes?.height || 1);
+        const scale = Math.min(
+          viewportWidth / Math.max(1, boxWidth),
+          viewportHeight / Math.max(1, boxHeight),
+        );
+        if (!Number.isFinite(scale) || scale <= 0) {
+          panZoom.fit();
+          panZoom.center();
+          return;
+        }
+
+        panZoom.zoom(scale);
+        panZoom.pan({
+          x: (viewportWidth - boxWidth * scale) / 2 - boxX * scale,
+          y: (viewportHeight - boxHeight * scale) / 2 - boxY * scale,
+        });
+      } catch {
+        // 矩阵不可逆等异常:跳过本次 fit,保留静态 SVG
       }
-
-      panZoom.zoom(scale);
-      panZoom.pan({
-        x: (viewportWidth - boxWidth * scale) / 2 - sizes.viewBox.x * scale,
-        y: (viewportHeight - boxHeight * scale) / 2 - sizes.viewBox.y * scale,
-      });
-    }, []);
+    }, [getCurrentSvgElement]);
 
     const fit = useCallback(() => {
       fitToViewBox();
@@ -363,7 +445,7 @@ export const MermaidPanZoom = forwardRef<MermaidPanZoomHandle, MermaidPanZoomPro
         }
 
         try {
-          ensureMermaidInit();
+          ensureMermaidInit(theme);
           const { svg } = await mermaid.render(`design_viewer_${runId}`, code);
           if (cancelled || runId !== renderSeq) {
             return;
@@ -412,7 +494,7 @@ export const MermaidPanZoom = forwardRef<MermaidPanZoomHandle, MermaidPanZoomPro
           containerRef.current.innerHTML = '';
         }
       };
-    }, [destroyPanZoom, fitToViewBox, mermaidCode, onReady]);
+    }, [destroyPanZoom, fitToViewBox, mermaidCode, onReady, theme]);
 
     useEffect(() => {
       const host = containerRef.current;

@@ -18,5 +18,6 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: python3 tools/validate_manifest.py --spec docs/diagrams/flows.json
-      - run: python3 tools/gen_diagrams.py --config design-viewer.config.json
+      - run: python3 tools/gen_diagrams.py --config design-viewer.config.example.json
       - run: npm run build
+      - run: npm test

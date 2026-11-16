@@ -1,7 +1,7 @@
 {
   "name": "design-viewer-kit",
-  "version": "0.1.0",
-  "description": "A generic, read-only flow and data design inventory viewer.",
+  "version": "0.2.0",
+  "description": "脚手架 Scaffold — a generic, read-only flow and data design inventory viewer with findings-driven governance.",
   "private": false,
   "type": "module",
   "workspaces": [
@@ -12,6 +12,7 @@
     "dev": "npm --workspace @design-viewer/web run dev",
     "build": "npm --workspace @design-viewer/web run build",
     "preview": "npm --workspace @design-viewer/web run preview",
+    "test": "npm --workspace @design-viewer/web run test",
     "generate": "python3 tools/gen_diagrams.py --config design-viewer.config.json",
     "validate": "python3 tools/validate_manifest.py --spec docs/diagrams/flows.json",
     "scaffold": "python3 tools/scaffold_flow.py --root ."

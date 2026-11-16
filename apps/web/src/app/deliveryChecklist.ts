@@ -210,8 +210,8 @@ function buildChecklist(ctx: ChecklistContext): FlowDeliveryChecklist {
       'C5_EVENTS_APPENDED',
       'Has events_appended / 有 events_appended',
       5,
-      flow.events_appended.length > 0 ? 'pass' : 'fail',
-      flow.events_appended.length > 0 ? 'events declared' : 'events_appended is empty',
+      (flow.events_appended ?? []).length > 0 ? 'pass' : 'fail',
+      (flow.events_appended ?? []).length > 0 ? 'events declared' : 'events_appended is empty',
     ),
   );
 

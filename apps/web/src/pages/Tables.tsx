@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { buildProjectIndexes, getServiceDisplay } from '../app/indexes';
+import { collectFindings, type Finding } from '../app/findings';
+import { useLocale, bi } from '../app/i18n';
 import { useProjectData } from '../app/useProjectData';
 
 function isMissingOwner(ownerService: string): boolean {
@@ -12,13 +14,40 @@ function isMissingIntroduced(introducedIn: string): boolean {
   return !normalized || normalized.toUpperCase() === 'TBD';
 }
 
+function worstSeverity(findings: Finding[]): 'red' | 'yellow' | 'green' | null {
+  if (findings.some((finding) => finding.severity === 'red')) {
+    return 'red';
+  }
+  if (findings.some((finding) => finding.severity === 'yellow')) {
+    return 'yellow';
+  }
+  if (findings.some((finding) => finding.severity === 'green')) {
+    return 'green';
+  }
+  return null;
+}
+
 export function TablesPage() {
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
   const [searchParams] = useSearchParams();
   const [nameFilter, setNameFilter] = useState('');
   const indexes = useMemo(() => buildProjectIndexes(data), [data]);
   const activeFilter = searchParams.get('filter')?.trim() ?? '';
   const keyword = nameFilter.trim().toLowerCase();
+
+  const findingsByTable = useMemo(() => {
+    const map = new Map<string, Finding[]>();
+    for (const finding of collectFindings(data)) {
+      if (!finding.table) {
+        continue;
+      }
+      const list = map.get(finding.table) ?? [];
+      list.push(finding);
+      map.set(finding.table, list);
+    }
+    return map;
+  }, [data]);
 
   const filteredTables = useMemo(() => {
     const items = data?.tables ?? [];
@@ -76,35 +105,54 @@ export function TablesPage() {
           <table className="table-lens-grid">
             <thead>
               <tr>
-                <th>Name / 表名</th>
-                <th>State / 状态</th>
-                <th>Owner / 归属服务</th>
-                <th>Introduced In / 引入位置</th>
-                <th>Alias / 别名</th>
+                <th>{bi(locale, 'Name', '表名')}</th>
+                <th>{bi(locale, 'State', '状态')}</th>
+                <th>{bi(locale, 'Owner', '归属服务')}</th>
+                <th>{bi(locale, 'Introduced In', '引入位置')}</th>
+                <th>{bi(locale, 'Alias', '别名')}</th>
+                <th>{bi(locale, 'Findings', '发现')}</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTables.map((table) => (
-                <tr key={table.name}>
-                  <td>
-                    <Link to={`/tables/${encodeURIComponent(table.name)}`} className="item-title">
-                      {table.name}
-                    </Link>
-                  </td>
-                  <td>
-                    <span
-                      className={`state-badge ${
-                        table.state === 'planned' ? 'state-badge-planned' : 'state-badge-existing'
-                      }`}
-                    >
-                      {table.state || '-'}
-                    </span>
-                  </td>
-                  <td>{getServiceDisplay(table.owner_service, indexes.mapServices)}</td>
-                  <td><code>{table.introduced_in || '-'}</code></td>
-                  <td>{table.alias_of ? `alias -> ${table.alias_of}` : '-'}</td>
-                </tr>
-              ))}
+              {filteredTables.map((table) => {
+                const tableFindings = findingsByTable.get(table.name) ?? [];
+                const worst = worstSeverity(tableFindings);
+                return (
+                  <tr key={table.name}>
+                    <td>
+                      <Link to={`/tables/${encodeURIComponent(table.name)}`} className="item-title">
+                        {table.name}
+                      </Link>
+                    </td>
+                    <td>
+                      <span
+                        className={`state-badge ${
+                          table.state === 'planned' ? 'state-badge-planned' : 'state-badge-existing'
+                        }`}
+                      >
+                        {table.state || '-'}
+                      </span>
+                    </td>
+                    <td>{getServiceDisplay(table.owner_service, indexes.mapServices)}</td>
+                    <td><code>{table.introduced_in || '-'}</code></td>
+                    <td>{table.alias_of ? `alias -> ${table.alias_of}` : '-'}</td>
+                    <td>
+                      {worst ? (
+                        <span className={`sev-badge sev-badge-${worst}`}>
+                          {worst === 'red'
+                            ? bi(locale, 'Red', '红')
+                            : worst === 'yellow'
+                              ? bi(locale, 'Yellow', '黄')
+                              : bi(locale, 'Green', '绿')}{' '}
+                          {tableFindings.length}
+                        </span>
+                      ) : (
+                        <span className="subtle">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

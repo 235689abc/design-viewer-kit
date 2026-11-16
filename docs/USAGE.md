@@ -87,6 +87,22 @@ manifest。工具默认只读输入并写入明确的生成目录。
 - `flows[].actors`, `event_table`, `outbox_table`, `finality`, `kind`,
   `source_ref`, `deprecated`, `replaced_by`：触发方、事件链路、状态和
   证据。
+- `tables[].issues`, `flows[].issues`：人工立案的发现（质量督查/评审引用）。
+  每条形如 `{"ref": "QC-01-R1", "severity": "red", "note": "…", "href": "可选链接"}`，
+  `severity ∈ red|yellow|green|info`（阻断/欠账/达标存照/中性说明）。
+  生成器原样透传进索引，viewer 的「发现 / Findings」页会聚合三源
+  （issues 字段 + notes 中的 QC-NN 字样 + 治理规则）并按严重度分组；
+  `notes` 里出现 `QC-NN` 也会被识别（向后兼容，老清单零迁移即点亮）。示例：
+
+```json
+{
+  "id": "FLOW-ORDER-CREATE-001",
+  "issues": [
+    {"ref": "QC-01-R1", "severity": "red", "note": "授权门故障态跳过（见督查报告）"}
+  ]
+}
+```
+
 - `meta.policy.runtime_paths`：只读运行态接口路径。
 
 未知字段会被生成器保留在输出索引中，可用于逐步扩展到 endpoint、页面、

@@ -44,6 +44,29 @@ def main() -> None:
     if "" in flow_ids or len(set(flow_ids)) != len(flow_ids):
         errors.append("flows must have unique non-empty id values")
 
+    def check_issues(holder: dict, holder_label: str) -> None:
+        issues = holder.get("issues")
+        if issues is None:
+            return
+        if not isinstance(issues, list):
+            errors.append(f"{holder_label}: issues must be an array")
+            return
+        for index, issue in enumerate(issues):
+            if not isinstance(issue, dict):
+                errors.append(f"{holder_label}: issues[{index}] must be an object")
+                continue
+            ref = issue.get("ref")
+            if not isinstance(ref, str) or not ref.strip():
+                errors.append(f"{holder_label}: issues[{index}].ref must be a non-empty string")
+            if str(issue.get("severity", "")) not in {"red", "yellow", "green", "info"}:
+                errors.append(
+                    f"{holder_label}: issues[{index}].severity must be red|yellow|green|info"
+                )
+
+    for table_row in data["tables"]:
+        if isinstance(table_row, dict) and table_row.get("name"):
+            check_issues(table_row, str(table_row["name"]))
+
     for flow in data["flows"]:
         if not isinstance(flow, dict):
             errors.append("each flow must be an object")
@@ -63,6 +86,7 @@ def main() -> None:
                 errors.append(f"{flow_id}: unknown write table {write.get('table')}")
             if str(write.get("op", "")).upper() not in {"C", "R", "U", "D"}:
                 errors.append(f"{flow_id}: invalid write op {write.get('op')}")
+        check_issues(flow, str(flow_id))
 
     if errors:
         raise SystemExit("Manifest validation failed:\n- " + "\n- ".join(errors))

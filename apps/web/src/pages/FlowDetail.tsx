@@ -4,6 +4,8 @@ import { buildFlowDeliveryChecklist } from '../app/deliveryChecklist';
 import { buildFlowMapMermaid } from '../app/buildFlowMapMermaid';
 import { buildFlowImpactMermaid } from '../app/buildFlowImpactMermaid';
 import { buildProjectIndexes, getServiceDisplay } from '../app/indexes';
+import { collectFindings } from '../app/findings';
+import { useLocale, bi } from '../app/i18n';
 import {
   formatRuntimeValue,
   getRuntimeBaseUrl,
@@ -63,6 +65,7 @@ export function FlowDetailPage() {
   const flowId = decodeURIComponent(id ?? '');
   const diffHint = searchParams.get('diff')?.trim() === '1';
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
   const indexes = useMemo(() => buildProjectIndexes(data), [data]);
   const flowMapRef = useRef<MermaidPanZoomHandle | null>(null);
   const flowImpactRef = useRef<MermaidPanZoomHandle | null>(null);
@@ -286,6 +289,9 @@ export function FlowDetailPage() {
   }
 
   const edges = data.crudEdges.filter((edge) => edge.flow_id === flow.id);
+  // 发现(本流程):issues 立案 + notes QC 标记 + 治理规则命中,统一聚合
+  const flowFindings = collectFindings(data)
+    .filter((finding) => finding.flowId === flow.id);
   const mermaid = data.diagrams.flow_mermaid[flow.id] ?? '';
   const ownerLabel = getServiceDisplay(flow.owner_service, indexes.mapServices);
   const runtimeColumns = collectRuntimeColumns(runtimeRows);
@@ -332,13 +338,54 @@ export function FlowDetailPage() {
 
       <div className="detail-grid">
         <article className="card">
-          <h2>Basic / 基本信息</h2>
-          <p><strong>ID:</strong> {flow.id}</p>
-          <p><strong>Name:</strong> {flow.name_en} / {flow.name_zh}</p>
-          <p><strong>Owner:</strong> {ownerLabel}</p>
-          <p><strong>Doc Path:</strong> <code>{flow.doc_path || '-'}</code></p>
-          <p><strong>Introduced In:</strong> <code>{flow.introduced_in || '-'}</code></p>
-          <p><strong>Idempotency:</strong> <code>{flow.idempotency_key || '-'}</code></p>
+          <h2>{bi(locale, 'Basic', '基本信息')}</h2>
+          <div className="field-list">
+            <span className="field-row"><span className="field-key">ID</span><span className="field-value field-value-mono">{flow.id}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'Name', '名称')}</span><span className="field-value">{locale === 'zh' ? flow.name_zh : flow.name_en}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'Owner', '归属服务')}</span><span className="field-value">{ownerLabel}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'Doc Path', '文档路径')}</span><span className="field-value field-value-mono">{flow.doc_path || '-'}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'Introduced In', '引入版本')}</span><span className="field-value field-value-mono">{flow.introduced_in || '-'}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'Idempotency', '幂等键')}</span><span className="field-value field-value-mono">{flow.idempotency_key || '-'}</span></span>
+            {flow.finality && (
+              <span className="field-row"><span className="field-key">{bi(locale, 'Finality', '终态语义')}</span><span className="field-value field-value-mono">{flow.finality}</span></span>
+            )}
+            {flow.actors && flow.actors.length > 0 && (
+              <span className="field-row"><span className="field-key">{bi(locale, 'Actors', '触发方')}</span><span className="field-value field-value-mono">{flow.actors.map((actor) => typeof actor === 'string' ? actor : JSON.stringify(actor)).join(', ')}</span></span>
+            )}
+            {flow.source_ref && (
+              <span className="field-row"><span className="field-key">{bi(locale, 'Source Ref', '代码证据')}</span><span className="field-value field-value-mono">{flow.source_ref}</span></span>
+            )}
+            {flow.deprecated && (
+              <span className="field-row"><span className="field-key">{bi(locale, 'Status', '状态')}</span><span className="field-value"><span className="sev-badge sev-badge-yellow">{bi(locale, `deprecated${flow.replaced_by ? ` → ${flow.replaced_by}` : ''}`, `已废弃${flow.replaced_by ? ` → ${flow.replaced_by}` : ''}`)}</span></span></span>
+            )}
+          </div>
+        </article>
+
+        <article className={`card ${flowFindings.some((finding) => finding.severity === 'red') ? 'card-accent-red' : flowFindings.some((finding) => finding.severity === 'yellow') ? 'card-accent-yellow' : 'card-accent-green'}`}>
+          <h2>{bi(locale, 'Findings & Evidence', '发现与证据')}</h2>
+          {flowFindings.length === 0 && (
+            <p className="subtle">{bi(locale, 'No filed findings for this flow.', '该流程暂无立案发现。')}</p>
+          )}
+          <ul className="findings-list">
+            {flowFindings.map((finding, index) => (
+              <li
+                key={`flow-finding-${finding.ref}-${index}`}
+                className={`findings-item findings-item-${finding.severity}`}
+                style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}
+              >
+                <span>
+                  <span className={`sev-badge sev-badge-${finding.severity}`} style={{ marginRight: 8 }}>{finding.ref}</span>
+                  <span className="findings-note">{finding.note}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {flow.notes && (
+            <>
+              <h2 style={{ marginTop: 14 }}>{bi(locale, 'Notes', '备注')}</h2>
+              <p className="findings-note">{flow.notes}</p>
+            </>
+          )}
         </article>
 
         <article className="card">

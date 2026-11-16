@@ -1,9 +1,19 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Design Viewer</title>
+    <title>脚手架 · Scaffold</title>
+    <script>
+      // 首屏防闪:在 React 挂载前把记忆的主题落到 <html data-theme>
+      try {
+        if (localStorage.getItem('scaffold_theme') === 'dark') {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      } catch (e) {
+        /* noop */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

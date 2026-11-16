@@ -9,6 +9,8 @@ import {
 } from '../app/indexes';
 import { getRuntimeBaseUrl, subscribeRuntimeBaseUrl } from '../app/runtimeClient';
 import { loadRuntimeOverlay } from '../app/runtimeMetrics';
+import { collectFindings } from '../app/findings';
+import { useLocale, bi } from '../app/i18n';
 import { type FlowRecord, useProjectData } from '../app/useProjectData';
 import {
   MermaidPanZoom,
@@ -116,6 +118,7 @@ export function TableDetailPage() {
   const tableName = decodeURIComponent(name ?? '');
   const focusedFlowId = searchParams.get('flow')?.trim() ?? '';
   const { data, loading, error } = useProjectData();
+  const [locale] = useLocale();
   const indexes = useMemo(() => buildProjectIndexes(data), [data]);
   const impactRef = useRef<MermaidPanZoomHandle | null>(null);
   const impactCardRef = useRef<HTMLElement | null>(null);
@@ -253,6 +256,8 @@ export function TableDetailPage() {
     indexes.mapServices,
   );
   const impactFileName = `table-${canonicalName.replace(/[^A-Za-z0-9_]+/g, '_')}-impact.svg`;
+  // 发现(本表):issues 立案 + notes QC 标记 + 治理规则命中,统一聚合
+  const tableFindings = collectFindings(data).filter((finding) => finding.table === table.name);
   const crudFocusLink = focusedFlowId
     ? `/crud?table=${encodeURIComponent(canonicalName)}&flow=${encodeURIComponent(focusedFlowId)}`
     : `/crud?table=${encodeURIComponent(canonicalName)}`;
@@ -270,40 +275,87 @@ export function TableDetailPage() {
 
       <div className="detail-grid">
         <article className="card">
-          <h2>Governance / 治理信息</h2>
-          <p><strong>Name:</strong> <code>{table.name}</code></p>
-          <p><strong>State:</strong>{' '}
-            <span
-              className={`state-badge ${
-                table.state === 'planned' ? 'state-badge-planned' : 'state-badge-existing'
-              }`}
-            >
-              {table.state || '-'}
+          <h2>{bi(locale, 'Governance', '治理信息')}</h2>
+          <div className="field-list">
+            <span className="field-row"><span className="field-key">{bi(locale, 'Name', '表名')}</span><span className="field-value field-value-mono">{table.name}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'State', '状态')}</span>
+              <span className="field-value">
+                <span className={`state-badge ${table.state === 'planned' ? 'state-badge-planned' : 'state-badge-existing'}`}>
+                  {table.state || '-'}
+                </span>
+              </span>
             </span>
-          </p>
-          <p><strong>Owner:</strong> {ownerLabel}</p>
-          <p><strong>Introduced In:</strong> <code>{table.introduced_in || '-'}</code></p>
-          <p><strong>Alias Of:</strong> <code>{table.alias_of || '-'}</code></p>
-          <p><strong>Canonical:</strong> <code>{canonicalName}</code></p>
-          {runtimeBaseUrl && (
-            <p>
-              <strong>Runtime heat:</strong>{' '}
-              <span className="schema-runtime-badge">{tableHeat}</span>
-            </p>
-          )}
+            <span className="field-row"><span className="field-key">{bi(locale, 'Owner', '归属服务')}</span><span className="field-value">{ownerLabel}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'Introduced In', '引入版本')}</span><span className="field-value field-value-mono">{table.introduced_in || '-'}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'Alias Of', '别名指向')}</span><span className="field-value field-value-mono">{table.alias_of || '-'}</span></span>
+            <span className="field-row"><span className="field-key">{bi(locale, 'Canonical', '规范名')}</span><span className="field-value field-value-mono">{canonicalName}</span></span>
+            {table.kind && (
+              <span className="field-row"><span className="field-key">{bi(locale, 'Kind', '存储类型')}</span><span className="field-value field-value-mono">{table.kind}</span></span>
+            )}
+            {table.source_ref && (
+              <span className="field-row"><span className="field-key">{bi(locale, 'Source Ref', '代码证据')}</span><span className="field-value field-value-mono">{table.source_ref}</span></span>
+            )}
+            {runtimeBaseUrl && (
+              <span className="field-row"><span className="field-key">{bi(locale, 'Runtime Heat', '运行态热度')}</span><span className="field-value"><span className="schema-runtime-badge">{tableHeat}</span></span></span>
+            )}
+          </div>
           <div className="table-detail-actions">
             <Link to={crudFocusLink} className="crud-btn table-lens-link-btn">
-              Highlight in CRUD / 在 CRUD 高亮
+              {bi(locale, 'Highlight in CRUD', '在 CRUD 高亮')}
             </Link>
             {focusedFlowId && (
               <Link
                 to={`/flows/${encodeURIComponent(focusedFlowId)}`}
                 className="crud-btn table-lens-link-btn"
               >
-                Back to Flow / 返回流程
+                {bi(locale, 'Back to Flow', '返回流程')}
               </Link>
             )}
           </div>
+        </article>
+
+        <article className={`card ${tableFindings.some((finding) => finding.severity === 'red') ? 'card-accent-red' : tableFindings.some((finding) => finding.severity === 'yellow') ? 'card-accent-yellow' : 'card-accent-green'}`}>
+          <h2>{bi(locale, 'Findings & Evidence', '发现与证据')}</h2>
+          {tableFindings.length === 0 && (
+            <p className="subtle">{bi(locale, 'No filed findings for this table.', '该表暂无立案发现。')}</p>
+          )}
+          <ul className="findings-list">
+            {tableFindings.map((finding, index) => (
+              <li
+                key={`table-finding-${finding.ref}-${index}`}
+                className={`findings-item findings-item-${finding.severity}`}
+                style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}
+              >
+                <span>
+                  <span className={`sev-badge sev-badge-${finding.severity}`} style={{ marginRight: 8 }}>{finding.ref}</span>
+                  <span className="findings-note">{finding.note}</span>
+                </span>
+                {finding.flowId && (
+                  <span className="findings-target">
+                    <Link className="sev-badge sev-badge-info" to={`/flows/${encodeURIComponent(finding.flowId)}`}>
+                      {finding.flowId}
+                    </Link>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {table.notes && (
+            <>
+              <h2 style={{ marginTop: 14 }}>{bi(locale, 'Notes', '备注')}</h2>
+              <p className="findings-note">{table.notes}</p>
+            </>
+          )}
+          {table.columns && table.columns.length > 0 && (
+            <>
+              <h2 style={{ marginTop: 14 }}>{bi(locale, 'Columns', '列摘要')}</h2>
+              <ul className="inline-list">
+                {table.columns.slice(0, 12).map((column, index) => (
+                  <li key={`table-column-${index}`} className="field-value-mono">{JSON.stringify(column)}</li>
+                ))}
+              </ul>
+            </>
+          )}
         </article>
 
         {focusedFlowId && (

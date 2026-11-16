@@ -142,19 +142,32 @@ export function CrudPage() {
       return;
     }
     const widthMap = widthByColIdRef.current;
-    const states = Object.entries(widthMap)
-      .filter(([, width]) => Number.isFinite(width) && width > 0)
-      .map(([colId, width]) => ({ colId, width }));
-    if (states.length === 0) {
+    // 逐列 setWidth 恢复宽度:applyColumnState 对「状态里没提到的列」会重置
+    // 钉固/顺序(实测:数据列集变化后,钉固的 Flow ID/Name 被洗到中心面板)。
+    // setColumnWidths 只动宽度,不碰列定义。
+    const updates: Array<{ key: string; newWidth: number }> = [];
+    for (const [colId, width] of Object.entries(widthMap)) {
+      if (!Number.isFinite(width) || width <= 0) {
+        continue;
+      }
+      if (!api.getColumn(colId)) {
+        continue;
+      }
+      updates.push({ key: colId, newWidth: width });
+    }
+    if (updates.length === 0) {
+      // 存档里没有任何现存列(列集已换代)→ 丢弃旧档,避免反复重放
+      if (Object.keys(widthMap).length > 0) {
+        widthByColIdRef.current = {};
+        try {
+          window.localStorage.removeItem(CRUD_WIDTH_STORAGE_KEY);
+        } catch {
+          // ignore storage errors
+        }
+      }
       return;
     }
-    const anyApi = api as unknown as {
-      applyColumnState?: (params: {
-        state: Array<{ colId: string; width: number }>;
-        applyOrder?: boolean;
-      }) => void;
-    };
-    anyApi.applyColumnState?.({ state: states, applyOrder: false });
+    api.setColumnWidths?.(updates);
   }, []);
 
   const replaySavedWidths = useCallback(

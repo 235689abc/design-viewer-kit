@@ -2,16 +2,20 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../ui/Sidebar';
 import { useProjectData } from './useProjectData';
+import { useLocale, bi } from './i18n';
+import { useTheme } from './theme';
 
 export function Layout() {
   const navigate = useNavigate();
   const { data, loading, reload } = useProjectData();
+  const [locale, setLocale] = useLocale();
+  const [theme, setTheme] = useTheme();
   const [globalKeyword, setGlobalKeyword] = useState('');
   const [searchHint, setSearchHint] = useState('');
   const [reloading, setReloading] = useState(false);
 
-  const normalizedFlowIds = useMemo(() => data?.flows ?? [], [data]);
-  const normalizedTableNames = useMemo(() => data?.tables ?? [], [data]);
+  const flows = useMemo(() => data?.flows ?? [], [data]);
+  const tables = useMemo(() => data?.tables ?? [], [data]);
 
   const onGlobalSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -21,30 +25,26 @@ export function Layout() {
       return;
     }
     if (!data) {
-      setSearchHint('Data not ready / 数据尚未加载完成');
+      setSearchHint(bi(locale, 'Data not ready', '数据尚未加载完成'));
       return;
     }
 
     const lowerKeyword = keyword.toLowerCase();
-    const flowExact = normalizedFlowIds.find(
-      (flow) => flow.id.toLowerCase() === lowerKeyword,
-    );
+    const flowExact = flows.find((flow) => flow.id.toLowerCase() === lowerKeyword);
     if (flowExact) {
       setSearchHint('');
       navigate(`/flows/${encodeURIComponent(flowExact.id)}`);
       return;
     }
 
-    const tableExact = normalizedTableNames.find(
-      (table) => table.name.toLowerCase() === lowerKeyword,
-    );
+    const tableExact = tables.find((table) => table.name.toLowerCase() === lowerKeyword);
     if (tableExact) {
       setSearchHint('');
       navigate(`/tables/${encodeURIComponent(tableExact.name)}`);
       return;
     }
 
-    const tablePrefixMatches = normalizedTableNames.filter((table) =>
+    const tablePrefixMatches = tables.filter((table) =>
       table.name.toLowerCase().startsWith(lowerKeyword),
     );
     if (tablePrefixMatches.length === 1) {
@@ -55,12 +55,16 @@ export function Layout() {
 
     if (tablePrefixMatches.length > 1) {
       setSearchHint(
-        `Multiple table matches (${tablePrefixMatches.length}), please refine / 命中多个表，请继续细化`,
+        bi(
+          locale,
+          `Multiple table matches (${tablePrefixMatches.length}), please refine`,
+          `命中多个表(${tablePrefixMatches.length}),请继续细化`,
+        ),
       );
       return;
     }
 
-    const flowPrefixMatches = normalizedFlowIds.filter((flow) =>
+    const flowPrefixMatches = flows.filter((flow) =>
       flow.id.toLowerCase().startsWith(lowerKeyword),
     );
     if (flowPrefixMatches.length === 1) {
@@ -71,12 +75,16 @@ export function Layout() {
 
     if (flowPrefixMatches.length > 1) {
       setSearchHint(
-        `Multiple flow matches (${flowPrefixMatches.length}), please refine / 命中多个流程，请继续细化`,
+        bi(
+          locale,
+          `Multiple flow matches (${flowPrefixMatches.length}), please refine`,
+          `命中多个流程(${flowPrefixMatches.length}),请继续细化`,
+        ),
       );
       return;
     }
 
-    setSearchHint(`No match: ${keyword} / 未匹配到目标`);
+    setSearchHint(bi(locale, `No match: ${keyword}`, `未匹配到目标:${keyword}`));
   };
 
   const onReloadData = async () => {
@@ -91,17 +99,46 @@ export function Layout() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="topbar-title">Design Viewer / 设计可视化脚手架</div>
+        <a className="topbar-brand" href="/">
+          <span className="brand-mark" aria-hidden="true">S</span>
+          <span>
+            <span className="brand-name">{bi(locale, 'Scaffold', '脚手架')}</span>
+            <span className="brand-sub">Design Viewer Kit</span>
+          </span>
+        </a>
+        {data?.meta?.project && (
+          <span className="topbar-project" title={data.meta.project}>
+            {data.meta.project}
+          </span>
+        )}
         <form className="topbar-search" onSubmit={onGlobalSearch}>
           <input
             type="text"
             value={globalKeyword}
             onChange={(event) => setGlobalKeyword(event.target.value)}
-            placeholder="Search flow/table: FLOW-XXX or orders"
-            aria-label="Global search flow or table"
+            placeholder={bi(locale, 'Search flow / table…', '搜索流程 / 数据表…')}
+            aria-label={bi(locale, 'Global search flow or table', '全局搜索流程或数据表')}
           />
-          <button type="submit" className="topbar-btn">Go / 跳转</button>
+          <button type="submit" className="topbar-btn">{bi(locale, 'Go', '跳转')}</button>
         </form>
+        <button
+          type="button"
+          className="topbar-btn"
+          aria-pressed={locale === 'zh'}
+          onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
+          title={bi(locale, 'Switch language', '切换语言')}
+        >
+          {locale === 'zh' ? 'EN' : '中文'}
+        </button>
+        <button
+          type="button"
+          className="topbar-btn"
+          aria-pressed={theme === 'dark'}
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          title={bi(locale, 'Toggle theme', '切换主题')}
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
         <button
           type="button"
           className="topbar-btn"
@@ -110,7 +147,9 @@ export function Layout() {
           }}
           disabled={loading || reloading}
         >
-          {loading || reloading ? 'Reloading... / 重新加载中...' : 'Reload Data / 重新加载数据'}
+          {loading || reloading
+            ? bi(locale, 'Reloading…', '重新加载中…')
+            : bi(locale, 'Reload', '重新加载')}
         </button>
       </header>
       {searchHint && <div className="topbar-hint">{searchHint}</div>}
