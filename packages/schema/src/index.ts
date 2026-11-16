@@ -1,3 +1,9 @@
+export type ServiceOps = {
+  port?: string;
+  health?: string;
+  deploy?: string;
+};
+
 export type Service = {
   id: string;
   name_en: string;
@@ -6,6 +12,7 @@ export type Service = {
   system_id?: string;
   owner?: string;
   source_ref?: string;
+  ops?: ServiceOps;
 };
 
 /**
@@ -17,6 +24,20 @@ export type Issue = {
   severity: 'red' | 'yellow' | 'green' | 'info';
   note?: string;
   href?: string;
+};
+
+/**
+ * 可选的功能盘点条目:把「功能」映射到承载它的 flows(id 引用)。
+ * 仅透传展示用,不参与 CRUD 投影。
+ */
+export type Feature = {
+  id: string;
+  name_en: string;
+  name_zh: string;
+  status?: string;
+  flows?: string[];
+  notes?: string;
+  issues?: Issue[];
 };
 
 export type Table = {
@@ -94,6 +115,7 @@ export type DesignIndex = {
   services: Service[];
   tables: Table[];
   flows: Flow[];
+  features?: Feature[];
   crudEdges: CrudEdge[];
   diagrams: {
     l0_mermaid: string;

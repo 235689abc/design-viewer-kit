@@ -1,0 +1,10 @@
+/* 导览页:只微调全局件在卡内的落位,颜色/间距一律走 var(--dv-*) token,零彩色零阴影 */
+
+.tour-page .health-strip {
+  margin-top: var(--dv-sp-2);
+}
+
+.tour-page .tour-flow-table,
+.tour-page .tour-role-table {
+  margin-top: var(--dv-sp-2);
+}

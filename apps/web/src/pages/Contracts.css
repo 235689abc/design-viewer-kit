@@ -1,0 +1,17 @@
+/* ============================================================
+   接口契约页(Contracts)专属样式
+   只补两件全局类没有的小事:宽表横向滚动、同格多徽章并排。
+   其余全部复用全局类与健康 token,白底黑字单色。
+   ============================================================ */
+
+.contract-grid-wrap {
+  margin-top: var(--dv-sp-3);
+  overflow-x: auto;
+}
+
+.contract-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dv-sp-1);
+}

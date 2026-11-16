@@ -1,0 +1,31 @@
+/* ============================================================
+   运维面板页(Ops)专属样式 · 单色版
+   只消费 var(--dv-*) token;其余复用全局类
+   (card / table-lens-grid / findings-item / sev-badge / field-list…)。
+   ============================================================ */
+
+/* 三张卡在页面纵向流中的间距(全局 .card 不带外距) */
+.ops-section {
+  margin-top: var(--dv-sp-3);
+}
+
+/* 卡头:标题 + 右侧计数/状态徽章同行 */
+.ops-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dv-sp-2);
+  margin: 0 0 var(--dv-sp-2);
+}
+
+.ops-card-head h2 {
+  margin: 0;
+}
+
+/* 红/黄计数徽章组 */
+.ops-count-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--dv-sp-1);
+}

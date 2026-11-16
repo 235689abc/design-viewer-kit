@@ -67,6 +67,20 @@ def main() -> None:
         if isinstance(table_row, dict) and table_row.get("name"):
             check_issues(table_row, str(table_row["name"]))
 
+    for service_row in data["services"]:
+        if not isinstance(service_row, dict):
+            continue
+        svc_id = str(service_row.get("id", "") or "<missing>")
+        ops = service_row.get("ops")
+        if ops is None:
+            continue
+        if not isinstance(ops, dict):
+            errors.append(f"{svc_id}: ops must be an object")
+            continue
+        for ops_key in ("port", "health", "deploy"):
+            if ops_key in ops and not isinstance(ops[ops_key], str):
+                errors.append(f"{svc_id}: ops.{ops_key} must be a string")
+
     for flow in data["flows"]:
         if not isinstance(flow, dict):
             errors.append("each flow must be an object")
@@ -87,6 +101,27 @@ def main() -> None:
             if str(write.get("op", "")).upper() not in {"C", "R", "U", "D"}:
                 errors.append(f"{flow_id}: invalid write op {write.get('op')}")
         check_issues(flow, str(flow_id))
+
+    features = data.get("features")
+    if features is not None:
+        if not isinstance(features, list):
+            errors.append("features must be an array")
+        else:
+            flow_id_set = set(flow_ids)
+            feature_ids = [
+                str(row.get("id", "")) for row in features if isinstance(row, dict)
+            ]
+            if "" in feature_ids or len(set(feature_ids)) != len(feature_ids):
+                errors.append("features must have unique non-empty id values")
+            for feature in features:
+                if not isinstance(feature, dict):
+                    errors.append("each feature must be an object")
+                    continue
+                feature_id = str(feature.get("id", "<missing>"))
+                for ref in feature.get("flows", []) or []:
+                    if ref not in flow_id_set:
+                        errors.append(f"{feature_id}: unknown flow ref {ref}")
+                check_issues(feature, feature_id)
 
     if errors:
         raise SystemExit("Manifest validation failed:\n- " + "\n- ".join(errors))

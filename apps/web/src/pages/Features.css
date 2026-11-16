@@ -1,0 +1,62 @@
+/* ============================================================
+   功能地图页(Features)专属样式
+   铁律:白底黑字单色,只消费 var(--dv-*) token;无彩色/渐变/阴影
+   ============================================================ */
+
+.feat-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--dv-sp-1) var(--dv-sp-2);
+}
+
+.feat-head h2 {
+  margin: 0;
+  font-size: var(--dv-fs-4);
+}
+
+.feat-id {
+  font-family: var(--dv-font-mono);
+  font-size: var(--dv-fs-1);
+}
+
+.feat-label {
+  margin-top: var(--dv-sp-3);
+}
+
+.feat-flow-list {
+  list-style: none;
+  margin: var(--dv-sp-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--dv-sp-2);
+}
+
+.feat-flow-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dv-sp-1) var(--dv-sp-2);
+  font-size: var(--dv-fs-2);
+}
+
+.feat-notes {
+  margin: var(--dv-sp-1) 0 0;
+  white-space: pre-wrap;
+}
+
+.feat-example {
+  margin: var(--dv-sp-2) 0 0;
+  padding: var(--dv-sp-2) var(--dv-sp-3);
+  border: 1px solid var(--dv-border);
+  border-radius: var(--dv-r-2);
+  background: var(--dv-surface);
+  color: var(--dv-text);
+  font-family: var(--dv-font-mono);
+  font-size: var(--dv-fs-1);
+  overflow-x: auto;
+}
+
+.feat-reverse {
+  margin-top: var(--dv-sp-3);
+}

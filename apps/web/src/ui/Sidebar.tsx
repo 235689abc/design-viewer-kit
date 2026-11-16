@@ -37,6 +37,7 @@ export function Sidebar() {
       en: 'Overview',
       zh: '总览',
       items: [
+        { to: '/tour', en: 'Tour', zh: '导览' },
         { to: '/', en: 'Dashboard', zh: '总览', end: true },
         {
           to: '/findings',
@@ -55,6 +56,8 @@ export function Sidebar() {
         { to: '/tables', en: 'Tables', zh: '数据表' },
         { to: '/crud', en: 'CRUD Matrix', zh: 'CRUD 矩阵' },
         { to: '/l0', en: 'System Map', zh: '系统地图' },
+        { to: '/features', en: 'Feature Map', zh: '功能地图' },
+        { to: '/architecture', en: 'Architecture', zh: '架构总览' },
       ],
     },
     {
@@ -64,13 +67,17 @@ export function Sidebar() {
       items: [
         { to: '/governance', en: 'Rules', zh: '治理规则' },
         { to: '/diff', en: 'Diff', zh: '变更' },
+        { to: '/contracts', en: 'Contracts', zh: '接口契约' },
       ],
     },
     {
-      key: 'settings',
-      en: 'Settings',
-      zh: '设置',
-      items: [{ to: '/settings', en: 'Settings', zh: '设置' }],
+      key: 'runtime',
+      en: 'Runtime',
+      zh: '运行',
+      items: [
+        { to: '/ops', en: 'Ops', zh: '运维面板' },
+        { to: '/settings', en: 'Settings', zh: '设置' },
+      ],
     },
   ];
 

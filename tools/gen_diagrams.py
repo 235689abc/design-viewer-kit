@@ -632,6 +632,24 @@ def export_index_json(spec, generated_dir: Path, out_path: Path, cfg: GenConfig)
         flow_md = generated_dir / "flows" / f"{fid.lower()}.md"
         flow_mermaid[fid] = extract_mermaid_block(flow_md)
 
+    # Optional top-level features: pass through as-is (dict() copy) when
+    # present, validating that each flows[] ref points at a known flow id.
+    features_out = None
+    raw_features = spec.get("features")
+    if raw_features is not None:
+        if not isinstance(raw_features, list):
+            raise ValueError("features must be an array")
+        flow_id_set = {fl.get("id", "") for fl in spec.get("flows", [])}
+        features_out = []
+        for feat in raw_features:
+            if not isinstance(feat, dict):
+                raise ValueError("each feature must be an object")
+            fid = str(feat.get("id", "")).strip() or "<missing-feature-id>"
+            for ref in feat.get("flows", []) or []:
+                if ref not in flow_id_set:
+                    raise ValueError(f"{fid}: unknown flow ref {ref}")
+            features_out.append(dict(feat))
+
     l0_mermaid = extract_mermaid_block(generated_dir / "l0_system_map.md")
     if l0_mermaid and not l0_mermaid.lstrip().startswith("graph TB"):
         lines = [ln for ln in l0_mermaid.splitlines() if ln.strip()]
@@ -658,6 +676,8 @@ def export_index_json(spec, generated_dir: Path, out_path: Path, cfg: GenConfig)
             "flow_mermaid": flow_mermaid,
         },
     }
+    if features_out is not None:
+        export["features"] = features_out
     for key in ("policy", "systems", "source_repositories"):
         if key in source_meta:
             export["meta"][key] = source_meta[key]

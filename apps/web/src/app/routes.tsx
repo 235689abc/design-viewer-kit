@@ -12,6 +12,11 @@ import { SettingsPage } from '../pages/Settings';
 import { DiffPage } from '../pages/Diff';
 import { GovernancePage } from '../pages/Governance';
 import { FindingsPage } from '../pages/Findings';
+import { TourPage } from '../pages/Tour';
+import { FeaturesPage } from '../pages/Features';
+import { ArchitecturePage } from '../pages/Architecture';
+import { OpsPage } from '../pages/Ops';
+import { ContractsPage } from '../pages/Contracts';
 
 export function AppRoutes() {
   return useRoutes([
@@ -20,7 +25,12 @@ export function AppRoutes() {
       element: <Layout />,
       children: [
         { index: true, element: <DashboardPage /> },
+        { path: 'tour', element: <TourPage /> },
         { path: 'findings', element: <FindingsPage /> },
+        { path: 'features', element: <FeaturesPage /> },
+        { path: 'architecture', element: <ArchitecturePage /> },
+        { path: 'ops', element: <OpsPage /> },
+        { path: 'contracts', element: <ContractsPage /> },
         { path: 'crud', element: <CrudPage /> },
         { path: 'flows', element: <FlowsPage /> },
         { path: 'flows/:id', element: <FlowDetailPage /> },

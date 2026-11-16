@@ -1,0 +1,28 @@
+/* 架构总览页专属样式(仅本页引入;颜色一律走全局 --dv-* token,不引入彩色) */
+
+.arch-group-title {
+  margin: var(--dv-sp-5) 0 0;
+  font-size: var(--dv-fs-5);
+}
+
+.arch-svc-id {
+  font-size: var(--dv-fs-2);
+  font-weight: 400;
+  color: var(--dv-text-3);
+}
+
+.arch-dep-label {
+  margin: var(--dv-sp-3) 0 0;
+  font-size: var(--dv-fs-2);
+  font-weight: 600;
+  color: var(--dv-text-2);
+}
+
+.arch-dep-list {
+  margin: var(--dv-sp-2) 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: var(--dv-fs-2);
+  word-break: break-word;
+}

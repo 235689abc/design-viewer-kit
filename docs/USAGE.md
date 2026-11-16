@@ -104,6 +104,24 @@ manifest。工具默认只读输入并写入明确的生成目录。
 ```
 
 - `meta.policy.runtime_paths`：只读运行态接口路径。
+- `services[].ops`：服务的运维信息（`port`/`health`/`deploy` 均为可选
+  字符串），如 `{"port": "8080", "health": "/healthz", "deploy": "helm/orders"}`。
+  生成器原样透传进索引，非字符串值会被校验器拒绝。
+- 顶层 `features`：可选的功能清单数组，盘点「功能 → 流程」映射。每条含
+  `id`、`name_en`、`name_zh`（必填）与可选 `status`、`flows`（引用
+  `flows[].id`，未知引用会被校验器和生成器拒绝）、`notes`、`issues`
+  （格式同上）。仅在 manifest 中存在时透传进索引。示例：
+
+```json
+{
+  "id": "FEATURE-ORDER-CREATE",
+  "name_en": "Order creation",
+  "name_zh": "创建订单",
+  "status": "live",
+  "flows": ["FLOW-ORDER-CREATE-001"],
+  "notes": "对外主路径"
+}
+```
 
 未知字段会被生成器保留在输出索引中，可用于逐步扩展到 endpoint、页面、
 worker、RBAC、环境开关和状态机等全量盘点维度。
