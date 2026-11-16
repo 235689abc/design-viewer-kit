@@ -1,5 +1,5 @@
 {
-  "project": "my-project",
+  "project": "design-viewer-demo",
   "spec": "./docs/diagrams/flows.json",
   "generatedDir": "./docs/diagrams/generated",
   "indexOut": "./apps/web/public/data/index.json",

@@ -174,6 +174,22 @@ python3 tools/scaffold_flow.py --root . \
 再用 `tools/apply_flows_patch.py --apply` 明确写入 manifest；后端输出仍然
 只是 `outputs/scaffold/<flow>/backend/` 下的安全模式评审文件。
 
+## 6.5 多项目共用与数据防线
+
+一个 kit 克隆可以服务多个项目:各项目的 manifest 留在各自仓库,kit 只当引擎。
+
+- **一键刷新**:`tools/refresh_viewer.sh --spec /path/to/project/docs/diagrams/flows.json`
+  (校验→写 kit 侧 config→生成→构建;`--no-build` 快检,`--serve` 起 127.0.0.1:5273 看板)。
+  config 每次自动重写且已被 gitignore,项目数据不会进 kit 版本库。
+- **数据防线(推送前必跑,CI 已内建)**:
+  `python3 tools/gen_diagrams.py --config design-viewer.config.example.json`
+  然后 `python3 tools/check_generated_is_example.py`(推送前对暂存区加 `--cached`)。
+  它用仓内示例重新生成一遍,与提交中的生成物做归一化对比(剔除 generated_at 与绝对路径),
+  实质差异即退出码 1——某个项目的真实 index.json/generated 混进 kit 仓库时,这条门会拦下推送;
+  JSON 中出现本机绝对路径(/Users/、/home/)同样判红。
+- **每轮同步约定**:项目侧发展出的通用能力(新页面/清单字段/脚本),以零项目数据形态回流本仓:
+  通用化改写 → 防线检查 → 提交(主题带 [upstream])→ tag。
+
 ## 7. 运行态适配器
 
 如果项目提供以下 GET 接口，可以把实时证据放到流程详情页：
