@@ -62,6 +62,15 @@ def main() -> None:
                 errors.append(
                     f"{holder_label}: issues[{index}].severity must be red|yellow|green|info"
                 )
+            # status 立案三态:缺省合法(视为 filed 已立案未复核)
+            if issue.get("status") is not None and str(issue.get("status")) not in {
+                "filed",
+                "confirmed",
+                "refuted",
+            }:
+                errors.append(
+                    f"{holder_label}: issues[{index}].status must be filed|confirmed|refuted"
+                )
 
     for table_row in data["tables"]:
         if isinstance(table_row, dict) and table_row.get("name"):

@@ -4,8 +4,8 @@ import { buildFlowDeliveryChecklist } from '../app/deliveryChecklist';
 import { buildFlowMapMermaid } from '../app/buildFlowMapMermaid';
 import { buildFlowImpactMermaid } from '../app/buildFlowImpactMermaid';
 import { buildProjectIndexes, getServiceDisplay } from '../app/indexes';
-import { collectFindings } from '../app/findings';
-import { useLocale, bi } from '../app/i18n';
+import { collectFindings, type FindingStatus } from '../app/findings';
+import { useLocale, bi, type Locale } from '../app/i18n';
 import {
   formatRuntimeValue,
   getRuntimeBaseUrl,
@@ -21,6 +21,35 @@ import {
 } from '../ui/MermaidPanZoom';
 
 const OPS_ORDER = ['C', 'R', 'U', 'D'];
+
+/**
+ * 立案三态徽章(白底黑字单色):
+ * confirmed=黑粗边徽「已证实」 / refuted=灰徽「已推翻」 / filed(缺省)=现状不加徽。
+ */
+function findingStatusBadge(locale: Locale, status?: FindingStatus) {
+  if (status === 'confirmed') {
+    return (
+      <span className="sev-badge" style={{ border: '2px solid var(--dv-text)', marginLeft: 8 }}>
+        {bi(locale, 'Confirmed', '已证实')}
+      </span>
+    );
+  }
+  if (status === 'refuted') {
+    return (
+      <span className="sev-badge sev-badge-info" style={{ marginLeft: 8 }}>
+        {bi(locale, 'Refuted', '已推翻')}
+      </span>
+    );
+  }
+  return null;
+}
+
+/** refuted 的 note 加删除线置灰;其余现状 */
+function findingNoteStyle(status?: FindingStatus) {
+  return status === 'refuted'
+    ? { textDecoration: 'line-through', color: 'var(--dv-text-3)' }
+    : undefined;
+}
 
 function mergeOps(existing: string, incoming: string): string {
   const opSet = new Set<string>();
@@ -387,7 +416,8 @@ export function FlowDetailPage() {
               >
                 <span>
                   <span className={`sev-badge sev-badge-${finding.severity}`} style={{ marginRight: 8 }}>{finding.ref}</span>
-                  <span className="findings-note">{finding.note}</span>
+                  {findingStatusBadge(locale, finding.status)}
+                  <span className="findings-note" style={findingNoteStyle(finding.status)}>{finding.note}</span>
                 </span>
               </li>
             ))}

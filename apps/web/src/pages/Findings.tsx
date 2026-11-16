@@ -7,8 +7,9 @@ import {
   summarizeFindings,
   type Finding,
   type FindingSeverity,
+  type FindingStatus,
 } from '../app/findings';
-import { useLocale, bi } from '../app/i18n';
+import { useLocale, bi, type Locale } from '../app/i18n';
 
 const SEVERITY_META: Record<
   FindingSeverity,
@@ -19,6 +20,32 @@ const SEVERITY_META: Record<
   green: { en: 'Healthy', zh: '达标', descEn: 'Verified healthy evidence', descZh: '达标存照(复核判据用)' },
   info: { en: 'Notes', zh: '说明', descEn: 'Neutral notes', descZh: '中性说明信息' },
 };
+
+/**
+ * 立案三态徽章(白底黑字单色):
+ * confirmed=黑粗边徽「已证实」 / refuted=灰徽「已推翻」 / filed(缺省)=现状不加徽。
+ * refuted 的 note 删除线由各发现卡的 noteStyle 处理。
+ */
+function findingStatusBadge(locale: Locale, status?: FindingStatus) {
+  if (status === 'confirmed') {
+    return (
+      <span className="sev-badge" style={{ border: '2px solid var(--dv-text)' }}>
+        {bi(locale, 'Confirmed', '已证实')}
+      </span>
+    );
+  }
+  if (status === 'refuted') {
+    return <span className="sev-badge sev-badge-info">{bi(locale, 'Refuted', '已推翻')}</span>;
+  }
+  return null;
+}
+
+/** refuted 的 note 加删除线置灰;其余现状 */
+function findingNoteStyle(status?: FindingStatus) {
+  return status === 'refuted'
+    ? { textDecoration: 'line-through', color: 'var(--dv-text-3)' }
+    : undefined;
+}
 
 function FindingTargets({ finding }: { finding: Finding }) {
   return (
@@ -125,7 +152,11 @@ export function FindingsPage() {
                   className={`findings-item findings-item-${severity}`}
                 >
                   <span className="findings-ref">{finding.ref}</span>
-                  <span className="findings-note">
+                  {findingStatusBadge(locale, finding.status)}
+                  <span
+                    className="findings-note"
+                    style={findingNoteStyle(finding.status)}
+                  >
                     {finding.note || SEVERITY_META[severity].descZh}
                   </span>
                   <FindingTargets finding={finding} />

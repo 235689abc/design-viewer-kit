@@ -18,10 +18,13 @@ export type Service = {
 /**
  * 人工立案的发现(如质量督查 QC-NN 引用)。severity 语义:
  * red=阻断 / yellow=欠账 / green=达标存照 / info=中性说明。
+ * status 为立案三态:filed=已立案未复核 / confirmed=复核已证实 / refuted=复核已推翻;
+ * 缺省视为 filed(与老清单零迁移兼容)。
  */
 export type Issue = {
   ref: string;
   severity: 'red' | 'yellow' | 'green' | 'info';
+  status?: 'filed' | 'confirmed' | 'refuted';
   note?: string;
   href?: string;
 };
