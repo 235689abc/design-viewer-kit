@@ -55,6 +55,8 @@ export function Sidebar() {
         { to: '/flows', en: 'Flows', zh: '流程' },
         { to: '/tables', en: 'Tables', zh: '数据表' },
         { to: '/crud', en: 'CRUD Matrix', zh: 'CRUD 矩阵' },
+        { to: '/gallery', en: 'Gallery', zh: '图库' },
+        { to: '/heatmap', en: 'Heatmap', zh: '热力矩阵' },
         { to: '/l0', en: 'System Map', zh: '系统地图' },
         { to: '/features', en: 'Feature Map', zh: '功能地图' },
         { to: '/architecture', en: 'Architecture', zh: '架构总览' },

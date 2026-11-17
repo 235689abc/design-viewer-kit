@@ -17,6 +17,8 @@ import { FeaturesPage } from '../pages/Features';
 import { ArchitecturePage } from '../pages/Architecture';
 import { OpsPage } from '../pages/Ops';
 import { ContractsPage } from '../pages/Contracts';
+import { GalleryPage } from '../pages/Gallery';
+import { HeatmapPage } from '../pages/Heatmap';
 
 export function AppRoutes() {
   return useRoutes([
@@ -32,6 +34,8 @@ export function AppRoutes() {
         { path: 'ops', element: <OpsPage /> },
         { path: 'contracts', element: <ContractsPage /> },
         { path: 'crud', element: <CrudPage /> },
+        { path: 'gallery', element: <GalleryPage /> },
+        { path: 'heatmap', element: <HeatmapPage /> },
         { path: 'flows', element: <FlowsPage /> },
         { path: 'flows/:id', element: <FlowDetailPage /> },
         { path: 'tables', element: <TablesPage /> },

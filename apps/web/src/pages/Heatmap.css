@@ -1,0 +1,293 @@
+/* ============================================================
+   CRUD 热力矩阵页(Heatmap)专属样式
+   铁律:白底黑字单色,只消费 var(--dv-*) token;无彩色/渐变/阴影。
+   唯一例外:四档触达灰阶与全局 .crud-cell-has-r/c/u/d 同源同值
+   (#f2f2f2 / #e4e4e4 / #d6d6d6 / #c4c4c4,任务点名逐字给定)。
+   ============================================================ */
+
+/* ---------- 顶部统计:复用全局 stat-block,只排布局 ---------- */
+
+.heat-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--dv-sp-3);
+  margin-top: var(--dv-sp-3);
+}
+
+/* ---------- 图例 ---------- */
+
+.heat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dv-sp-1) var(--dv-sp-4);
+  margin-top: var(--dv-sp-3);
+  font-size: var(--dv-fs-2);
+  color: var(--dv-text-2);
+}
+
+.heat-legend-title {
+  font-weight: 700;
+  color: var(--dv-text);
+}
+
+.heat-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dv-sp-2);
+}
+
+.heat-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--dv-border);
+  background: #ffffff;
+}
+
+.heat-swatch-r {
+  background: #f2f2f2;
+}
+
+.heat-swatch-c {
+  background: #e4e4e4;
+}
+
+.heat-swatch-u {
+  background: #d6d6d6;
+}
+
+.heat-swatch-d {
+  background: #c4c4c4;
+}
+
+.heat-swatch-none {
+  background: #ffffff;
+}
+
+/* ---------- 矩阵容器:横/纵滚动 + 双 sticky 的滚动窗口 ---------- */
+
+.heat-matrix-scroll {
+  margin-top: var(--dv-sp-3);
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--dv-border);
+  border-radius: var(--dv-r-3);
+  background: var(--dv-surface);
+}
+
+.heat-matrix {
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: var(--dv-fs-1);
+}
+
+/* 列宽:行头列 + 数据列(colgroup 驱动,table-layout: fixed 保证竖排列头不撑宽) */
+.heat-col-head {
+  width: 240px;
+}
+
+.heat-col-cell,
+.heat-col-start {
+  width: 36px;
+}
+
+/* ---------- 表头:schema 分组带 + 竖排表名,均 sticky top ---------- */
+
+/* schema 分组带:固定高 30px(下一行 sticky 偏移以此为锚,勿改单边) */
+.heat-schema-row th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 30px;
+  padding: 0 var(--dv-sp-2);
+  line-height: 30px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-size: var(--dv-fs-1);
+  font-weight: 700;
+  color: var(--dv-text-2);
+  background: var(--dv-surface-2);
+  border-bottom: 1px solid var(--dv-border);
+}
+
+.heat-schema-count {
+  font-weight: 400;
+  color: var(--dv-text-3);
+}
+
+/* 表名列:竖排(自下而上读),sticky 在分组带之下 */
+.heat-col-row th {
+  position: sticky;
+  top: 30px;
+  z-index: 3;
+  height: 150px;
+  padding: var(--dv-sp-2) 0;
+  border-bottom: 2px solid var(--dv-border-strong);
+  background: var(--dv-surface);
+  vertical-align: bottom;
+}
+
+.heat-col-link {
+  display: flex;
+  justify-content: center;
+  height: 100%;
+  color: var(--dv-text);
+  text-decoration: none;
+}
+
+.heat-col-link:hover,
+.heat-col-link:focus-visible {
+  text-decoration: underline;
+}
+
+.heat-col-name {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-height: 118px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--dv-font-mono);
+  font-size: var(--dv-fs-1);
+}
+
+/* 左上角:横纵双 sticky,压在两行表头与行头之上 */
+.heat-corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  padding: 0 var(--dv-sp-2);
+  text-align: left;
+  vertical-align: middle;
+  font-size: var(--dv-fs-1);
+  font-weight: 700;
+  color: var(--dv-text);
+  background: var(--dv-surface);
+  border-right: 2px solid var(--dv-border-strong);
+  border-bottom: 2px solid var(--dv-border-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 行头:sticky left ---------- */
+
+.heat-row-head {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  padding: 0;
+  background: var(--dv-surface);
+  border-right: 2px solid var(--dv-border-strong);
+  border-bottom: 1px solid var(--dv-border);
+}
+
+.heat-row-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dv-sp-2);
+  min-height: 28px;
+  padding: 0 var(--dv-sp-2);
+  color: var(--dv-text);
+  text-decoration: none;
+}
+
+.heat-row-link:hover,
+.heat-row-link:focus-visible {
+  text-decoration: underline;
+}
+
+.heat-row-id {
+  font-family: var(--dv-font-mono);
+  font-size: var(--dv-fs-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heat-row-count {
+  flex: none;
+  min-width: 20px;
+  text-align: center;
+  font-family: var(--dv-font-mono);
+  font-size: var(--dv-fs-1);
+  color: var(--dv-text-2);
+  border: 1px solid var(--dv-border);
+  border-radius: var(--dv-r-1);
+  background: var(--dv-surface-2);
+  padding: 0 var(--dv-sp-1);
+}
+
+/* ---------- 单元格 ---------- */
+
+.heat-cell {
+  height: 28px;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  background: #ffffff;
+  border-right: 1px solid var(--dv-border);
+  border-bottom: 1px solid var(--dv-border);
+}
+
+/* 无触达 = 白底细边框(边框由 .heat-cell 网格线提供) */
+
+/* 四档触达灰阶:R 最浅 → D 最深(与 .crud-cell-has-* 逐字同值) */
+.heat-cell-r {
+  background: #f2f2f2;
+}
+
+.heat-cell-c {
+  background: #e4e4e4;
+}
+
+.heat-cell-u {
+  background: #d6d6d6;
+}
+
+.heat-cell-d {
+  background: #c4c4c4;
+}
+
+.heat-cell-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 26px;
+  color: var(--dv-text);
+  text-decoration: none;
+}
+
+.heat-cell-link:hover,
+.heat-cell-link:focus-visible {
+  outline: 2px solid var(--dv-border-strong);
+  outline-offset: -2px;
+}
+
+.heat-cell-ops {
+  font-family: var(--dv-font-mono);
+  font-size: var(--dv-fs-1);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ---------- schema 分组分隔线(表头带 + 列头 + 数据列统一左移 2px) ---------- */
+
+.heat-schema-row th.heat-group-start,
+.heat-col-row th.heat-group-start {
+  border-left: 2px solid var(--dv-border-strong);
+}
+
+.heat-cell.heat-group-start {
+  border-left: 2px solid var(--dv-border-strong);
+}

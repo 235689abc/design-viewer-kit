@@ -6,7 +6,12 @@ import {
   type GovernanceSeverity,
 } from '../app/governanceRules';
 import { useLocale, bi } from '../app/i18n';
+import { getViewerPolicy } from '../app/policy';
 import { useProjectData } from '../app/useProjectData';
+
+function isConfiguredTable(value: string | undefined): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
 
 function issueMatches(issue: GovernanceIssue, keyword: string): boolean {
   if (!keyword) {
@@ -39,6 +44,19 @@ export function GovernancePage() {
   const [severityFilter, setSeverityFilter] = useState<'all' | 'violation' | 'warning'>('all');
   const preselectedRule = searchParams.get('rule')?.trim() ?? '';
   const result = useMemo(() => runGovernanceChecks(data, locale), [data, locale]);
+  const policy = useMemo(() => getViewerPolicy(data), [data]);
+  const configuredPolicy = data?.meta.policy;
+  // 豁免列表展示「显式配置项」:getViewerPolicy().allowMultiWriterTables 会并入三张
+  // 政策表回退名,那是对账判定的有效集,不是这里的配置镜像。
+  const multiWriterTables = useMemo(
+    () =>
+      (configuredPolicy?.allow_multi_writer_tables ?? [])
+        .filter((table): table is string => typeof table === 'string')
+        .map((table) => table.trim())
+        .filter(Boolean),
+    [configuredPolicy],
+  );
+  const auditSchemas = useMemo(() => Array.from(policy.auditSchemas), [policy]);
 
   const visibleItems = useMemo(() => {
     const lowered = keyword.trim().toLowerCase();
@@ -81,6 +99,84 @@ export function GovernancePage() {
       {!loading && !error && (
         <>
           <div className="card-grid">
+            <article className="card">
+              <h2>{bi(locale, 'Policy', '政策面')}</h2>
+              <p className="subtle">
+                {bi(
+                  locale,
+                  'Governance rules are judged against these policy tables.',
+                  '治理规则按这些政策表判定。',
+                )}
+              </p>
+              <div className="field-list">
+                <span className="field-row">
+                  <span className="field-key">event_table</span>
+                  <span className="field-value field-value-mono">
+                    {isConfiguredTable(configuredPolicy?.event_table) ? (
+                      <Link to={`/tables/${encodeURIComponent(policy.eventTable)}`}>
+                        {policy.eventTable}
+                      </Link>
+                    ) : (
+                      <span className="subtle">{bi(locale, 'Not configured', '未配置')}</span>
+                    )}
+                  </span>
+                </span>
+                <span className="field-row">
+                  <span className="field-key">outbox_table</span>
+                  <span className="field-value field-value-mono">
+                    {isConfiguredTable(configuredPolicy?.outbox_table) ? (
+                      <Link to={`/tables/${encodeURIComponent(policy.outboxTable)}`}>
+                        {policy.outboxTable}
+                      </Link>
+                    ) : (
+                      <span className="subtle">{bi(locale, 'Not configured', '未配置')}</span>
+                    )}
+                  </span>
+                </span>
+                <span className="field-row">
+                  <span className="field-key">processed_events_table</span>
+                  <span className="field-value field-value-mono">
+                    {isConfiguredTable(configuredPolicy?.processed_events_table) ? (
+                      <Link to={`/tables/${encodeURIComponent(policy.processedEventsTable)}`}>
+                        {policy.processedEventsTable}
+                      </Link>
+                    ) : (
+                      <span className="subtle">{bi(locale, 'Not configured', '未配置')}</span>
+                    )}
+                  </span>
+                </span>
+                <span className="field-row">
+                  <span className="field-key">audit_schemas</span>
+                  <span className="field-value field-value-mono">
+                    {auditSchemas.length > 0 ? (
+                      <ul className="inline-list">
+                        {auditSchemas.map((schema) => (
+                          <li key={schema}>{schema}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="subtle">{bi(locale, 'None', '无')}</span>
+                    )}
+                  </span>
+                </span>
+                <span className="field-row">
+                  <span className="field-key">allow_multi_writer_tables</span>
+                  <span className="field-value field-value-mono">
+                    {multiWriterTables.length > 0 ? (
+                      <ul className="inline-list">
+                        {multiWriterTables.map((table) => (
+                          <li key={table}>
+                            <Link to={`/tables/${encodeURIComponent(table)}`}>{table}</Link>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="subtle">{bi(locale, 'No exemptions', '无豁免')}</span>
+                    )}
+                  </span>
+                </span>
+              </div>
+            </article>
             <article className="card">
               <h2>{bi(locale, 'Summary', '总览')}</h2>
               <p>{bi(locale, 'violations', '违例')}: {result.violations.length}</p>

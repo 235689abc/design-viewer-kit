@@ -1,0 +1,120 @@
+/* 图库页:左窄栏选图 + 右侧单图懒渲染。只消费 var(--dv-*) token,白底黑字单色。 */
+
+.gallery-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--dv-sp-3);
+  align-items: start;
+  margin-top: var(--dv-sp-3);
+}
+
+/* 左栏窄列:图多时可独立滚动,滚动时吸附视口 */
+.gallery-side {
+  position: sticky;
+  top: var(--dv-sp-3);
+  display: grid;
+  gap: var(--dv-sp-4);
+  max-height: calc(100vh - 2 * var(--dv-sp-5));
+  overflow: auto;
+}
+
+.gallery-group {
+  display: grid;
+  gap: var(--dv-sp-2);
+}
+
+.gallery-group-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--dv-sp-2);
+  margin: 0;
+  font-size: var(--dv-fs-2);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dv-text-2);
+}
+
+.gallery-group-count {
+  font-size: var(--dv-fs-1);
+  font-weight: 400;
+  color: var(--dv-text-3);
+}
+
+.gallery-group-list {
+  display: grid;
+  gap: var(--dv-sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gallery-group-empty {
+  margin: 0;
+}
+
+/* 选图项:灰阶表达选中——左粗条最深(黑)+ 底色抬一档(surface-2) */
+.gallery-item {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--dv-border);
+  border-left-width: 3px;
+  border-left-color: var(--dv-border);
+  border-radius: var(--dv-r-2);
+  background: var(--dv-surface);
+  color: var(--dv-text);
+  padding: var(--dv-sp-2) var(--dv-sp-2) var(--dv-sp-2) var(--dv-sp-3);
+  font: inherit;
+  cursor: pointer;
+}
+
+.gallery-item:hover {
+  background: var(--dv-surface-2);
+}
+
+.gallery-item.is-active {
+  background: var(--dv-surface-2);
+  border-left-color: var(--dv-text);
+}
+
+.gallery-item:focus-visible {
+  outline: 2px solid var(--dv-focus-ring);
+  outline-offset: 1px;
+}
+
+.gallery-item-name {
+  font-size: var(--dv-fs-3);
+  font-weight: 600;
+  color: var(--dv-text);
+}
+
+.gallery-item-id {
+  font-family: var(--dv-font-mono);
+  font-size: var(--dv-fs-1);
+  color: var(--dv-text-3);
+  word-break: break-all;
+}
+
+/* 右侧主区:同一时刻只挂载一张图(懒渲染) */
+.gallery-main {
+  display: grid;
+  gap: var(--dv-sp-2);
+  min-width: 0;
+}
+
+.gallery-flow-link {
+  font-size: var(--dv-fs-2);
+}
+
+@media (max-width: 900px) {
+  .gallery-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-side {
+    position: static;
+    max-height: none;
+  }
+}
